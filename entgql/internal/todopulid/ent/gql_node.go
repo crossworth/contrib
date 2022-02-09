@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"sync/atomic"
 
 	"entgo.io/contrib/entgql"
 	"entgo.io/contrib/entgql/internal/todopulid/ent/category"
@@ -27,6 +29,7 @@ import (
 	"entgo.io/contrib/entgql/internal/todopulid/ent/todo"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/hashicorp/go-multierror"
+	"golang.org/x/sync/semaphore"
 )
 
 // Noder wraps the basic Node method.
@@ -244,19 +247,24 @@ func (c *Client) newNodeOpts(opts []NodeOption) *nodeOptions {
 	for _, opt := range opts {
 		opt(nopts)
 	}
+
 	if nopts.nodeType == nil {
 		nopts.nodeType = func(ctx context.Context, id pulid.ID) (string, error) {
+
+			return c.tables.nodeType(ctx, c.driver, id)
 			return "", fmt.Errorf("cannot resolve noder (%v) without its type", id)
+
 		}
 	}
+
 	return nopts
 }
 
 // Noder returns a Node by its id. If the NodeType was not provided, it will
 // be derived from the id value according to the universal-id configuration.
 //
-//		c.Noder(ctx, id)
-//		c.Noder(ctx, id, ent.WithNodeType(pet.Table))
+//        c.Noder(ctx, id)
+//        c.Noder(ctx, id, ent.WithNodeType(pet.Table))
 //
 func (c *Client) Noder(ctx context.Context, id pulid.ID, opts ...NodeOption) (_ Noder, err error) {
 	defer func() {
@@ -264,15 +272,19 @@ func (c *Client) Noder(ctx context.Context, id pulid.ID, opts ...NodeOption) (_ 
 			err = multierror.Append(err, entgql.ErrNodeNotFound(id))
 		}
 	}()
+
 	table, err := c.newNodeOpts(opts).nodeType(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	return c.noder(ctx, table, id)
+
 }
 
 func (c *Client) noder(ctx context.Context, table string, id pulid.ID) (Noder, error) {
+
 	switch table {
+
 	case category.Table:
 		n, err := c.Category.Query().
 			Where(category.ID(id)).
@@ -282,6 +294,7 @@ func (c *Client) noder(ctx context.Context, table string, id pulid.ID) (Noder, e
 			return nil, err
 		}
 		return n, nil
+
 	case todo.Table:
 		n, err := c.Todo.Query().
 			Where(todo.ID(id)).
@@ -312,13 +325,17 @@ func (c *Client) Noders(ctx context.Context, ids []pulid.ID, opts ...NodeOption)
 	errors := make([]error, len(ids))
 	tables := make(map[string][]pulid.ID)
 	id2idx := make(map[pulid.ID][]int, len(ids))
+
 	nopts := c.newNodeOpts(opts)
+
 	for i, id := range ids {
+
 		table, err := nopts.nodeType(ctx, id)
 		if err != nil {
 			errors[i] = err
 			continue
 		}
+
 		tables[table] = append(tables[table], id)
 		id2idx[id] = append(id2idx[id], i)
 	}
@@ -363,7 +380,9 @@ func (c *Client) noders(ctx context.Context, table string, ids []pulid.ID) ([]No
 	for i, id := range ids {
 		idmap[id] = append(idmap[id], &noders[i])
 	}
+
 	switch table {
+
 	case category.Table:
 		nodes, err := c.Category.Query().
 			Where(category.IDIn(ids...)).
@@ -377,6 +396,7 @@ func (c *Client) noders(ctx context.Context, table string, ids []pulid.ID) ([]No
 				*noder = node
 			}
 		}
+
 	case todo.Table:
 		nodes, err := c.Todo.Query().
 			Where(todo.IDIn(ids...)).
@@ -394,4 +414,10 @@ func (c *Client) noders(ctx context.Context, table string, ids []pulid.ID) ([]No
 		return nil, fmt.Errorf("cannot resolve noders from table %q: %w", table, errNodeInvalidID)
 	}
 	return noders, nil
+}
+
+type tables struct {
+	once  sync.Once
+	sem   *semaphore.Weighted
+	value atomic.Value
 }

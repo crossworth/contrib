@@ -33,7 +33,7 @@ type Annotation struct {
 	Mapping []string `json:"Mapping,omitempty"`
 	// Type is the underlying GraphQL type name (e.g. Boolean).
 	Type string `json:"Type,omitempty"`
-	// Skip exclude the type
+	// Skip excludes the type
 	Skip bool `json:"Skip,omitempty"`
 }
 

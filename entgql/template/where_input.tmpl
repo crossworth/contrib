@@ -6,30 +6,30 @@ in the LICENSE file in the root directory of this source tree.
 
 {{ define "gql_where_input" }}
 
-{{- /*gotype: entgo.io/ent/entc/gen.Graph*/ -}}
+    {{- /*gotype: entgo.io/ent/entc/gen.Graph*/ -}}
 
-{{ $pkg := base $.Config.Package }}
-{{- with extend $ "Package" $pkg }}
+    {{ $pkg := base $.Config.Package }}
+    {{- with extend $ "Package" $pkg }}
         {{ template "header" . }}
-{{- end }}
+    {{- end }}
 
-{{ template "import" $ }}
+    {{ template "import" $ }}
 
-{{ range $n := filterNodes $.Nodes }}
-    {{ $comparableFields := list $n.ID }}
-    {{ with $annotation := $n.ID.Annotations.EntGQL }}
-        {{ if $annotation.Skip }}
-            {{ $comparableFields = list }}
+    {{ range $n := filterNodes $.Nodes }}
+        {{ $comparableFields := list $n.ID }}
+        {{ with $annotation := $n.ID.Annotations.EntGQL }}
+            {{ if $annotation.Skip }}
+                {{ $comparableFields = list }}
+            {{ end }}
         {{ end }}
-    {{ end }}
-    {{ range $f := filterFields $n.Fields }}
-        {{ if $f.Type.Comparable }}
-            {{ $comparableFields = append $comparableFields $f }}
+        {{ range $f := filterFields $n.Fields }}
+            {{ if $f.Type.Comparable }}
+                {{ $comparableFields = append $comparableFields $f }}
+            {{ end }}
         {{ end }}
-    {{ end }}
-    {{ $input := print $n.Name "WhereInput" }}
-    // {{ $input }} represents a where input for filtering {{ $n.Name }} queries.
-    type {{ $input }} struct {
+        {{ $input := print $n.Name "WhereInput" }}
+        // {{ $input }} represents a where input for filtering {{ $n.Name }} queries.
+        type {{ $input }} struct {
         Not *{{ $input }} `json:"not,omitempty"`
         Or  []*{{ $input }} `json:"or,omitempty"`
         And []*{{ $input }} `json:"and,omitempty"`
@@ -45,6 +45,13 @@ in the LICENSE file in the root directory of this source tree.
                     {{- $jsonTag = $f.Name }}
                 {{- end }}
                 {{- $type := $f.Type }}
+
+                {{- if eq $f.Name "id" }}
+                    {{- if $.Config.FeatureEnabled "entgql/globalid" }}
+                        {{- $type = "GlobalID" }}
+                    {{- end }}
+                {{- end }}
+
                 {{- if $op.Niladic }}
                     {{- $type = "bool" }}
                 {{- else if $op.Variadic }}
@@ -66,66 +73,66 @@ in the LICENSE file in the root directory of this source tree.
             {{- $jsonTag = print $jsonTag "_with" }}
             {{ $field }} []*{{ print $e.Type.Name "WhereInput" }} `json:"{{ camel $jsonTag }},omitempty"`
         {{- end }}
-    }
+        }
 
-    // Filter applies the {{ $input }} filter on the {{ $n.QueryName }} builder.
-    func (i *{{ $input }}) Filter(q *{{ $n.QueryName }}) (*{{ $n.QueryName }}, error) {
+        // Filter applies the {{ $input }} filter on the {{ $n.QueryName }} builder.
+        func (i *{{ $input }}) Filter(q *{{ $n.QueryName }}) (*{{ $n.QueryName }}, error) {
         if i == nil {
-            return q, nil
+        return q, nil
         }
         p, err := i.P()
         if err != nil {
-            return nil, err
+        return nil, err
         }
         return q.Where(p), nil
-    }
+        }
 
-    // P returns a predicate for filtering {{ plural $n.Name | lower }}.
-    // An error is returned if the input is empty or invalid.
-    func (i *{{ $input }}) P() (predicate.{{ $n.Name }}, error) {
+        // P returns a predicate for filtering {{ plural $n.Name | lower }}.
+        // An error is returned if the input is empty or invalid.
+        func (i *{{ $input }}) P() (predicate.{{ $n.Name }}, error) {
         var predicates []predicate.{{ $n.Name }}
         if i.Not != nil {
-            p, err := i.Not.P()
-            if err != nil {
-                return nil, err
-            }
-            predicates = append(predicates, {{ $n.Package }}.Not(p))
+        p, err := i.Not.P()
+        if err != nil {
+        return nil, err
+        }
+        predicates = append(predicates, {{ $n.Package }}.Not(p))
         }
         switch n := len(i.Or); {
         case n == 1:
-            p, err := i.Or[0].P()
-            if err != nil {
-                return nil, err
-            }
-            predicates = append(predicates, p)
+        p, err := i.Or[0].P()
+        if err != nil {
+        return nil, err
+        }
+        predicates = append(predicates, p)
         case n > 1:
-            or := make([]predicate.{{ $n.Name }}, 0, n)
-            for _, w := range i.Or {
-                p, err := w.P()
-                if err != nil {
-                    return nil, err
-                }
-                or = append(or, p)
-            }
-            predicates = append(predicates, {{ $n.Package }}.Or(or...))
+        or := make([]predicate.{{ $n.Name }}, 0, n)
+        for _, w := range i.Or {
+        p, err := w.P()
+        if err != nil {
+        return nil, err
+        }
+        or = append(or, p)
+        }
+        predicates = append(predicates, {{ $n.Package }}.Or(or...))
         }
         switch n := len(i.And); {
         case n == 1:
-            p, err := i.And[0].P()
-            if err != nil {
-                return nil, err
-            }
-            predicates = append(predicates, p)
+        p, err := i.And[0].P()
+        if err != nil {
+        return nil, err
+        }
+        predicates = append(predicates, p)
         case n > 1:
-            and := make([]predicate.{{ $n.Name }}, 0, n)
-            for _, w := range i.And {
-                p, err := w.P()
-                if err != nil {
-                    return nil, err
-                }
-                and = append(and, p)
-            }
-            predicates = append(predicates, {{ $n.Package }}.And(and...))
+        and := make([]predicate.{{ $n.Name }}, 0, n)
+        for _, w := range i.And {
+        p, err := w.P()
+        if err != nil {
+        return nil, err
+        }
+        and = append(and, p)
+        }
+        predicates = append(predicates, {{ $n.Package }}.And(and...))
         }
         {{- range $f := $comparableFields }}
             {{- range $op := $f.Ops }}
@@ -137,17 +144,54 @@ in the LICENSE file in the root directory of this source tree.
                 {{- end }}
                 {{- if $op.Niladic }}
                     if i.{{ $field }} {
-                        predicates = append(predicates, {{ $n.Package }}.{{ $func }}())
+                    predicates = append(predicates, {{ $n.Package }}.{{ $func }}())
                     }
                 {{- else }}
                     {{- if $op.Variadic }}
-                        if len(i.{{ $field }}) > 0 {
+
+                        {{- if eq $f.Name "id" }}
+                            {{- if $.Config.FeatureEnabled "entgql/globalid" }}
+                                {{- $typeName :=  $n.ID.Type.Type.String }}
+                                {{ if $n.ID.Type.RType }}
+                                    {{ $typeName = $n.ID.Type.RType.Name }}
+                                {{ end -}}
+
+                                if i.{{ $field }} != nil {
+                                predicates = append(predicates, {{ $n.Package }}.{{ $func }}({{if $.Config.FeatureEnabled "entgql/globalid" }}GlobalIDsTo{{ pascal $typeName}}s(i.{{ $field }}){{else}}i.{{ $field }}{{end}}...))
+                                }
+
+                            {{- else }}
+                                if len(i.{{ $field }}) > 0 {
+                                predicates = append(predicates, {{ $n.Package }}.{{ $func }}(i.{{ $field }}...))
+                                }
+                            {{- end }}
+                        {{- else }}
+                            if len(i.{{ $field }}) > 0 {
                             predicates = append(predicates, {{ $n.Package }}.{{ $func }}(i.{{ $field }}...))
-                        }
+                            }
+                        {{- end }}
                     {{- else }}
-                        if i.{{ $field }} != nil {
+                        {{- if eq $f.Name "id" }}
+                            {{- if $.Config.FeatureEnabled "entgql/globalid" }}
+                                {{- $typeName :=  $n.ID.Type.Type.String }}
+                                {{ if $n.ID.Type.RType }}
+                                    {{ $typeName = $n.ID.Type.RType.Name }}
+                                {{ end -}}
+
+                                if i.{{ $field }} != nil {
+                                predicates = append(predicates, {{ $n.Package }}.{{ $func }}(i.{{ $field }}.{{ pascal $typeName}}()))
+                                }
+
+                            {{- else }}
+                                if i.{{ $field }} != nil {
+                                predicates = append(predicates, {{ $n.Package }}.{{ $func }}({{ if not $f.Type.RType.IsPtr }}*{{ end }}i.{{ $field }}))
+                                }
+                            {{- end }}
+                        {{- else }}
+                            if i.{{ $field }} != nil {
                             predicates = append(predicates, {{ $n.Package }}.{{ $func }}({{ if not $f.Type.RType.IsPtr }}*{{ end }}i.{{ $field }}))
-                        }
+                            }
+                        {{- end }}
                     {{- end }}
                 {{- end }}
             {{- end }}
@@ -155,33 +199,33 @@ in the LICENSE file in the root directory of this source tree.
         {{ range $e := filterEdges $n.Edges }}
             {{- $func := print "Has" $e.StructField }}
             if i.{{ $func }} != nil {
-                p := {{ $n.Package }}.{{ $func }}()
-                if !*i.{{ $func }} {
-                    p = {{ $n.Package }}.Not(p)
-                }
-                predicates = append(predicates, p)
+            p := {{ $n.Package }}.{{ $func }}()
+            if !*i.{{ $func }} {
+            p = {{ $n.Package }}.Not(p)
+            }
+            predicates = append(predicates, p)
             }
             {{- $func = print $func "With" }}
             if len(i.{{ $func }}) > 0 {
-                with := make([]predicate.{{ $e.Type.Name }}, 0, len(i.{{ $func }}))
-                for _, w := range i.{{ $func }} {
-                    p, err := w.P()
-                    if err != nil {
-                        return nil, err
-                    }
-                    with = append(with, p)
-                }
-                predicates = append(predicates, {{ $n.Package }}.{{ $func }}(with...))
+            with := make([]predicate.{{ $e.Type.Name }}, 0, len(i.{{ $func }}))
+            for _, w := range i.{{ $func }} {
+            p, err := w.P()
+            if err != nil {
+            return nil, err
+            }
+            with = append(with, p)
+            }
+            predicates = append(predicates, {{ $n.Package }}.{{ $func }}(with...))
             }
         {{- end }}
         switch len(predicates) {
         case 0:
-            return nil, fmt.Errorf("empty predicate {{ $input }}")
+        return nil, fmt.Errorf("empty predicate {{ $input }}")
         case 1:
-            return predicates[0], nil
+        return predicates[0], nil
         default:
-            return {{ $n.Package }}.And(predicates...), nil
+        return {{ $n.Package }}.And(predicates...), nil
         }
-    }
-{{- end }}
+        }
+    {{- end }}
 {{ end }}

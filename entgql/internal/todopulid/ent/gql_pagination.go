@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"entgo.io/contrib/entgql/internal/todopulid/ent/category"
-	"entgo.io/contrib/entgql/internal/todopulid/ent/schema/pulid"
 	"entgo.io/contrib/entgql/internal/todopulid/ent/todo"
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
@@ -160,8 +159,8 @@ type PageInfo struct {
 
 // Cursor of an edge type.
 type Cursor struct {
-	ID    pulid.ID `msgpack:"i"`
-	Value Value    `msgpack:"v,omitempty"`
+	ID    string `msgpack:"i"`
+	Value Value  `msgpack:"v,omitempty"`
 }
 
 // MarshalGQL implements graphql.Marshaler interface.
@@ -447,7 +446,7 @@ var (
 		field: category.FieldText,
 		toCursor: func(c *Category) Cursor {
 			return Cursor{
-				ID:    c.ID,
+				ID:    fmt.Sprint(c.ID),
 				Value: c.Text,
 			}
 		},
@@ -457,7 +456,7 @@ var (
 		field: category.FieldDuration,
 		toCursor: func(c *Category) Cursor {
 			return Cursor{
-				ID:    c.ID,
+				ID:    fmt.Sprint(c.ID),
 				Value: c.Duration,
 			}
 		},
@@ -516,7 +515,7 @@ var DefaultCategoryOrder = &CategoryOrder{
 	Field: &CategoryOrderField{
 		field: category.FieldID,
 		toCursor: func(c *Category) Cursor {
-			return Cursor{ID: c.ID}
+			return Cursor{ID: fmt.Sprint(c.ID)}
 		},
 	},
 }
@@ -731,7 +730,7 @@ var (
 		field: todo.FieldCreatedAt,
 		toCursor: func(t *Todo) Cursor {
 			return Cursor{
-				ID:    t.ID,
+				ID:    fmt.Sprint(t.ID),
 				Value: t.CreatedAt,
 			}
 		},
@@ -741,7 +740,7 @@ var (
 		field: todo.FieldStatus,
 		toCursor: func(t *Todo) Cursor {
 			return Cursor{
-				ID:    t.ID,
+				ID:    fmt.Sprint(t.ID),
 				Value: t.Status,
 			}
 		},
@@ -751,7 +750,7 @@ var (
 		field: todo.FieldPriority,
 		toCursor: func(t *Todo) Cursor {
 			return Cursor{
-				ID:    t.ID,
+				ID:    fmt.Sprint(t.ID),
 				Value: t.Priority,
 			}
 		},
@@ -761,7 +760,7 @@ var (
 		field: todo.FieldText,
 		toCursor: func(t *Todo) Cursor {
 			return Cursor{
-				ID:    t.ID,
+				ID:    fmt.Sprint(t.ID),
 				Value: t.Text,
 			}
 		},
@@ -828,7 +827,7 @@ var DefaultTodoOrder = &TodoOrder{
 	Field: &TodoOrderField{
 		field: todo.FieldID,
 		toCursor: func(t *Todo) Cursor {
-			return Cursor{ID: t.ID}
+			return Cursor{ID: fmt.Sprint(t.ID)}
 		},
 	},
 }
