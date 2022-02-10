@@ -28,19 +28,34 @@
         // GlobalID is a global unique identifier that contains a a type and id.
         type GlobalID struct{ Type, ID string; resolvedType interface{} }
 
-        // UnmarshalGQL implements the interface graphql.Unmarshaler.
-        func (g *GlobalID) UnmarshalGQL(v interface{}) error {
+        var marshalGlobalID = func(g GlobalID) string {
+        id := fmt.Sprintf("%s:%s", g.Type, g.ID)
+        return base64.StdEncoding.EncodeToString([]byte(id))
+        }
+
+        var unmarshalGlobalID = func(v interface{}) (string, string, error) {
         id := v.(string)
         b, err := base64.URLEncoding.DecodeString(id)
         if err != nil {
-        return err
+        return "", "", err
         }
         tid := strings.Split(string(b), ":")
         if len(tid) != 2 {
-        return fmt.Errorf("invalid global identifier format %q", b)
+        return "", "", fmt.Errorf("invalid global identifier format %q", b)
         }
-        g.Type = tid[0]
-        g.ID =  tid[1]
+
+        return tid[0], tid[1], nil
+        }
+
+
+        // UnmarshalGQL implements the interface graphql.Unmarshaler.
+        func (g *GlobalID) UnmarshalGQL(v interface{}) error {
+        typ, id, err := unmarshalGlobalID(v)
+        if err != nil {
+        return err
+        }
+        g.Type = typ
+        g.ID =  id
 
         switch g.Type {
         {{- range $n := $.Nodes }}
@@ -89,8 +104,7 @@
         }
 
         func (g GlobalID) String() string {
-        id := fmt.Sprintf("%s:%s", g.Type, g.ID)
-        return base64.StdEncoding.EncodeToString([]byte(id))
+        return marshalGlobalID(g)
         }
 
         {{ $idTypes := dict }}
@@ -125,14 +139,8 @@
 
         {{- range $n := $.Nodes }}
             // GlobalID returns the global identifier for the given {{ $n.Name }} node.
-            func ({{ $n.Receiver }} *{{ $n.Name }}) GlobalID() GlobalID {
+            func ({{ $n.Receiver }} *{{ $n.Name }}) GlobalID(ctx context.Context) GlobalID {
             return GlobalID{Type: type{{ $n.Name }}, ID: fmt.Sprintf("%{{ if $n.ID.Type.Numeric}}d{{ else }}s{{ end }}", {{ $n.Receiver }}.ID), resolvedType: {{ $n.Receiver }}.ID}
-            }
-
-            // GlobalIDPtr returns the pointer for the global identifier for the given {{ $n.Name }} node.
-            func ({{ $n.Receiver }} *{{ $n.Name }}) GlobalIDPtr() *GlobalID {
-            id := {{ $n.Receiver }}.GlobalID()
-            return &id
             }
 
             // New{{ $n.Name }}GlobalID creates a global identifier for the given {{ $n.Name }} node.
@@ -140,6 +148,11 @@
             return GlobalID{Type: type{{ $n.Name }}, ID: fmt.Sprintf("%{{ if $n.ID.Type.Numeric}}d{{ else }}s{{ end }}", id), resolvedType: id}
             }
         {{- end }}
+
+        // GlobalIDPtr returns a *GlobalID from the provided GlobalID.
+        func GlobalIDPtr(g GlobalID) *GlobalID {
+        return &g
+        }
 
 
         func (c *Client) FromGlobalID(ctx context.Context, r GlobalID) (_ Noder, err error) {

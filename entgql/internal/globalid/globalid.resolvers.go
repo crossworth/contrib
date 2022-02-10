@@ -23,12 +23,8 @@ import (
 	"entgo.io/contrib/entgql/internal/globalid/ent"
 )
 
-func (r *postResolver) ID(ctx context.Context, obj *ent.Post) (*ent.GlobalID, error) {
-	return obj.GlobalIDPtr(), nil
-}
-
 func (r *postResolver) UserID(ctx context.Context, obj *ent.Post) (*ent.GlobalID, error) {
-	return obj.GlobalIDPtr(), nil
+	return ent.GlobalIDPtr(obj.GlobalID(ctx)), nil
 }
 
 func (r *queryResolver) Node(ctx context.Context, id ent.GlobalID) (ent.Noder, error) {
@@ -47,19 +43,11 @@ func (r *queryResolver) Posts(ctx context.Context, after *ent.Cursor, first *int
 	return r.client.Post.Query().Paginate(ctx, after, first, before, last, ent.WithPostFilter(where.Filter))
 }
 
-func (r *userResolver) ID(ctx context.Context, obj *ent.User) (*ent.GlobalID, error) {
-	return obj.GlobalIDPtr(), nil
-}
-
 // Post returns PostResolver implementation.
 func (r *Resolver) Post() PostResolver { return &postResolver{r} }
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-// User returns UserResolver implementation.
-func (r *Resolver) User() UserResolver { return &userResolver{r} }
-
 type postResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-type userResolver struct{ *Resolver }

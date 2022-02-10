@@ -127,10 +127,10 @@ func (s *globalidTestSuite) TestQueryAll() {
 	err := s.Post(queryAll, &rsp)
 	s.Require().NoError(err)
 	s.Require().Equal(4, rsp.Users.TotalCount)
-	s.Require().Equal(u1.GlobalID().String(), rsp.Users.Edges[0].Node.ID)
-	s.Require().Equal(u2.GlobalID().String(), rsp.Users.Edges[1].Node.ID)
-	s.Require().Equal(u3.GlobalID().String(), rsp.Users.Edges[2].Node.ID)
-	s.Require().Equal(u4.GlobalID().String(), rsp.Users.Edges[3].Node.ID)
+	s.Require().Equal(u1.GlobalID(ctx).String(), rsp.Users.Edges[0].Node.ID)
+	s.Require().Equal(u2.GlobalID(ctx).String(), rsp.Users.Edges[1].Node.ID)
+	s.Require().Equal(u3.GlobalID(ctx).String(), rsp.Users.Edges[2].Node.ID)
+	s.Require().Equal(u4.GlobalID(ctx).String(), rsp.Users.Edges[3].Node.ID)
 }
 
 func (s *globalidTestSuite) TestPaginationFiltering() {
@@ -165,7 +165,7 @@ func (s *globalidTestSuite) TestPaginationFiltering() {
 		var rsp responseUsers
 		err := s.Post(query, &rsp,
 			client.Var("first", 1),
-			client.Var("id", u1.GlobalID().String()),
+			client.Var("id", u1.GlobalID(ctx).String()),
 		)
 		s.NoError(err)
 		s.Require().Equal(1, rsp.Users.TotalCount)
@@ -210,12 +210,12 @@ func (s *globalidTestSuite) TestPaginationFilteringEdge() {
 		var rsp responsePosts
 		err := s.Post(query, &rsp,
 			client.Var("first", 10),
-			client.Var("userID", u1.GlobalID().String()),
+			client.Var("userID", u1.GlobalID(ctx).String()),
 		)
 		s.NoError(err)
 		s.Require().Equal(1, rsp.Posts.TotalCount)
 		s.Require().Equal("P1", rsp.Posts.Edges[0].Node.Name)
-		s.Require().Equal(p1.GlobalID().String(), rsp.Posts.Edges[0].Node.UserID)
+		s.Require().Equal(p1.GlobalID(ctx).String(), rsp.Posts.Edges[0].Node.UserID)
 	})
 
 	s.Run("with hasUserWith", func() {
@@ -224,14 +224,14 @@ func (s *globalidTestSuite) TestPaginationFilteringEdge() {
 			client.Var("first", 10),
 			client.Var("hasUserWith", []map[string]string{
 				{
-					"id": u1.GlobalID().String(),
+					"id": u1.GlobalID(ctx).String(),
 				},
 			}),
 		)
 		s.NoError(err)
 		s.Require().Equal(1, rsp.Posts.TotalCount)
 		s.Require().Equal("P1", rsp.Posts.Edges[0].Node.Name)
-		s.Require().Equal(p1.GlobalID().String(), rsp.Posts.Edges[0].Node.UserID)
+		s.Require().Equal(p1.GlobalID(ctx).String(), rsp.Posts.Edges[0].Node.UserID)
 	})
 }
 
@@ -259,7 +259,7 @@ func (s *globalidTestSuite) TestNode() {
 			Name string
 		}
 	}
-	err := s.Post(query, &rsp, client.Var("id", u1.GlobalID().String()))
+	err := s.Post(query, &rsp, client.Var("id", u1.GlobalID(ctx).String()))
 	s.Require().NoError(err)
 	s.Require().Equal("U1", rsp.User.Name)
 }
@@ -289,8 +289,8 @@ func (s *globalidTestSuite) TestNodes() {
 		}
 	}
 	err := s.Post(query, &rsp, client.Var("ids", []string{
-		u1.GlobalID().String(),
-		u2.GlobalID().String(),
+		u1.GlobalID(ctx).String(),
+		u2.GlobalID(ctx).String(),
 	}))
 	s.Require().NoError(err)
 	s.Require().Len(rsp.Users, 2)

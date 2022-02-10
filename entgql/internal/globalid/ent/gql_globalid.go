@@ -43,19 +43,33 @@ type GlobalID struct {
 	resolvedType interface{}
 }
 
-// UnmarshalGQL implements the interface graphql.Unmarshaler.
-func (g *GlobalID) UnmarshalGQL(v interface{}) error {
+var marshalGlobalID = func(g GlobalID) string {
+	id := fmt.Sprintf("%s:%s", g.Type, g.ID)
+	return base64.StdEncoding.EncodeToString([]byte(id))
+}
+
+var unmarshalGlobalID = func(v interface{}) (string, string, error) {
 	id := v.(string)
 	b, err := base64.URLEncoding.DecodeString(id)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 	tid := strings.Split(string(b), ":")
 	if len(tid) != 2 {
-		return fmt.Errorf("invalid global identifier format %q", b)
+		return "", "", fmt.Errorf("invalid global identifier format %q", b)
 	}
-	g.Type = tid[0]
-	g.ID = tid[1]
+
+	return tid[0], tid[1], nil
+}
+
+// UnmarshalGQL implements the interface graphql.Unmarshaler.
+func (g *GlobalID) UnmarshalGQL(v interface{}) error {
+	typ, id, err := unmarshalGlobalID(v)
+	if err != nil {
+		return err
+	}
+	g.Type = typ
+	g.ID = id
 
 	switch g.Type {
 	case typePost:
@@ -82,8 +96,7 @@ func (g GlobalID) MarshalGQL(w io.Writer) {
 }
 
 func (g GlobalID) String() string {
-	id := fmt.Sprintf("%s:%s", g.Type, g.ID)
-	return base64.StdEncoding.EncodeToString([]byte(id))
+	return marshalGlobalID(g)
 }
 
 func (g *GlobalID) UUID() uuid.UUID {
@@ -127,14 +140,8 @@ func GlobalIDsToInts(ids []GlobalID) []int {
 }
 
 // GlobalID returns the global identifier for the given Post node.
-func (po *Post) GlobalID() GlobalID {
+func (po *Post) GlobalID(ctx context.Context) GlobalID {
 	return GlobalID{Type: typePost, ID: fmt.Sprintf("%s", po.ID), resolvedType: po.ID}
-}
-
-// GlobalIDPtr returns the pointer for the global identifier for the given Post node.
-func (po *Post) GlobalIDPtr() *GlobalID {
-	id := po.GlobalID()
-	return &id
 }
 
 // NewPostGlobalID creates a global identifier for the given Post node.
@@ -143,19 +150,18 @@ func NewPostGlobalID(id uuid.UUID) GlobalID {
 }
 
 // GlobalID returns the global identifier for the given User node.
-func (u *User) GlobalID() GlobalID {
+func (u *User) GlobalID(ctx context.Context) GlobalID {
 	return GlobalID{Type: typeUser, ID: fmt.Sprintf("%d", u.ID), resolvedType: u.ID}
-}
-
-// GlobalIDPtr returns the pointer for the global identifier for the given User node.
-func (u *User) GlobalIDPtr() *GlobalID {
-	id := u.GlobalID()
-	return &id
 }
 
 // NewUserGlobalID creates a global identifier for the given User node.
 func NewUserGlobalID(id int) GlobalID {
 	return GlobalID{Type: typeUser, ID: fmt.Sprintf("%d", id), resolvedType: id}
+}
+
+// GlobalIDPtr returns a *GlobalID from the provided GlobalID.
+func GlobalIDPtr(g GlobalID) *GlobalID {
+	return &g
 }
 
 func (c *Client) FromGlobalID(ctx context.Context, r GlobalID) (_ Noder, err error) {

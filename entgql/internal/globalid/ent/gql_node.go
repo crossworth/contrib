@@ -66,7 +66,7 @@ type Edge struct {
 
 func (po *Post) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
-		ID:     po.GlobalID(),
+		ID:     po.GlobalID(ctx),
 		Type:   "Post",
 		Fields: make([]*Field, 2),
 		Edges:  make([]*Edge, 1),
@@ -103,7 +103,7 @@ func (po *Post) Node(ctx context.Context) (node *Node, err error) {
 
 func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
-		ID:     u.GlobalID(),
+		ID:     u.GlobalID(ctx),
 		Type:   "User",
 		Fields: make([]*Field, 1),
 		Edges:  make([]*Edge, 1),
@@ -285,7 +285,7 @@ func (c *Client) noders(ctx context.Context, table string, ids []GlobalID) ([]No
 			return nil, err
 		}
 		for _, node := range nodes {
-			for _, noder := range idmap[node.GlobalID()] {
+			for _, noder := range idmap[node.GlobalID(ctx)] {
 				*noder = node
 			}
 		}
@@ -298,7 +298,7 @@ func (c *Client) noders(ctx context.Context, table string, ids []GlobalID) ([]No
 			return nil, err
 		}
 		for _, node := range nodes {
-			for _, noder := range idmap[node.GlobalID()] {
+			for _, noder := range idmap[node.GlobalID(ctx)] {
 				*noder = node
 			}
 		}

@@ -38,7 +38,6 @@ type Config struct {
 type ResolverRoot interface {
 	Post() PostResolver
 	Query() QueryResolver
-	User() UserResolver
 }
 
 type DirectiveRoot struct {
@@ -53,10 +52,10 @@ type ComplexityRoot struct {
 	}
 
 	Post struct {
-		ID     func(childComplexity int) int
-		Name   func(childComplexity int) int
-		User   func(childComplexity int) int
-		UserID func(childComplexity int) int
+		GlobalID func(childComplexity int) int
+		Name     func(childComplexity int) int
+		User     func(childComplexity int) int
+		UserID   func(childComplexity int) int
 	}
 
 	PostConnection struct {
@@ -78,8 +77,8 @@ type ComplexityRoot struct {
 	}
 
 	User struct {
-		ID   func(childComplexity int) int
-		Name func(childComplexity int) int
+		GlobalID func(childComplexity int) int
+		Name     func(childComplexity int) int
 	}
 
 	UserConnection struct {
@@ -95,8 +94,6 @@ type ComplexityRoot struct {
 }
 
 type PostResolver interface {
-	ID(ctx context.Context, obj *ent.Post) (*ent.GlobalID, error)
-
 	UserID(ctx context.Context, obj *ent.Post) (*ent.GlobalID, error)
 }
 type QueryResolver interface {
@@ -104,9 +101,6 @@ type QueryResolver interface {
 	Nodes(ctx context.Context, ids []*ent.GlobalID) ([]ent.Noder, error)
 	Users(ctx context.Context, after *ent.Cursor, first *int, before *ent.Cursor, last *int, where *ent.UserWhereInput) (*ent.UserConnection, error)
 	Posts(ctx context.Context, after *ent.Cursor, first *int, before *ent.Cursor, last *int, where *ent.PostWhereInput) (*ent.PostConnection, error)
-}
-type UserResolver interface {
-	ID(ctx context.Context, obj *ent.User) (*ent.GlobalID, error)
 }
 
 type executableSchema struct {
@@ -153,11 +147,11 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		return e.complexity.PageInfo.StartCursor(childComplexity), true
 
 	case "Post.id":
-		if e.complexity.Post.ID == nil {
+		if e.complexity.Post.GlobalID == nil {
 			break
 		}
 
-		return e.complexity.Post.ID(childComplexity), true
+		return e.complexity.Post.GlobalID(childComplexity), true
 
 	case "Post.name":
 		if e.complexity.Post.Name == nil {
@@ -264,11 +258,11 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		return e.complexity.Query.Users(childComplexity, args["after"].(*ent.Cursor), args["first"].(*int), args["before"].(*ent.Cursor), args["last"].(*int), args["where"].(*ent.UserWhereInput)), true
 
 	case "User.id":
-		if e.complexity.User.ID == nil {
+		if e.complexity.User.GlobalID == nil {
 			break
 		}
 
-		return e.complexity.User.ID(childComplexity), true
+		return e.complexity.User.GlobalID(childComplexity), true
 
 	case "User.name":
 		if e.complexity.User.Name == nil {
@@ -365,16 +359,16 @@ var sources = []*ast.Source{
 	{Name: "globalid.graphql", Input: `directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 
 interface Node {
-    id: ID!
+    id: ID! @goField(name: "GlobalID")
 }
 
 type User implements Node {
-    id: ID!
+    id: ID! @goField(name: "GlobalID")
     name: String!
 }
 
 type Post implements Node {
-    id: ID!
+    id: ID! @goField(name: "GlobalID")
     name: String!
     userID: ID!
     user: User!
@@ -839,13 +833,13 @@ func (ec *executionContext) _Post_id(ctx context.Context, field graphql.Collecte
 		Field:      field,
 		Args:       nil,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Post().ID(rctx, obj)
+		return obj.GlobalID(ctx), nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -857,9 +851,9 @@ func (ec *executionContext) _Post_id(ctx context.Context, field graphql.Collecte
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*ent.GlobalID)
+	res := resTmp.(ent.GlobalID)
 	fc.Result = res
-	return ec.marshalNID2ᚖentgoᚗioᚋcontribᚋentgqlᚋinternalᚋglobalidᚋentᚐGlobalID(ctx, field.Selections, res)
+	return ec.marshalNID2entgoᚗioᚋcontribᚋentgqlᚋinternalᚋglobalidᚋentᚐGlobalID(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Post_name(ctx context.Context, field graphql.CollectedField, obj *ent.Post) (ret graphql.Marshaler) {
@@ -1378,13 +1372,13 @@ func (ec *executionContext) _User_id(ctx context.Context, field graphql.Collecte
 		Field:      field,
 		Args:       nil,
 		IsMethod:   true,
-		IsResolver: true,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.User().ID(rctx, obj)
+		return obj.GlobalID(ctx), nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1396,9 +1390,9 @@ func (ec *executionContext) _User_id(ctx context.Context, field graphql.Collecte
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*ent.GlobalID)
+	res := resTmp.(ent.GlobalID)
 	fc.Result = res
-	return ec.marshalNID2ᚖentgoᚗioᚋcontribᚋentgqlᚋinternalᚋglobalidᚋentᚐGlobalID(ctx, field.Selections, res)
+	return ec.marshalNID2entgoᚗioᚋcontribᚋentgqlᚋinternalᚋglobalidᚋentᚐGlobalID(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_name(ctx context.Context, field graphql.CollectedField, obj *ent.User) (ret graphql.Marshaler) {

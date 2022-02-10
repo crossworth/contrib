@@ -102,7 +102,7 @@ in the LICENSE file in the root directory of this source tree.
         {{ $receiver := $n.Receiver }}
         func ({{ $receiver }} *{{ $n.Name }}) Node(ctx context.Context) (node *Node, err error) {
         node = &Node{
-        ID: {{ if $usingGlobalID }}{{ $receiver }}.GlobalID(){{ else }}{{ $receiver }}.ID{{ end }},
+        ID: {{ if $usingGlobalID }}{{ $receiver }}.GlobalID(ctx){{ else }}{{ $receiver }}.ID{{ end }},
         Type: "{{ $n.Name }}",
         Fields: make([]*Field, {{ len $n.Fields }}),
         Edges: make([]*Edge, {{ len (filterEdges $n.Edges) }}),
@@ -334,7 +334,7 @@ in the LICENSE file in the root directory of this source tree.
         return nil, err
         }
         for _, node := range nodes {
-        for _, noder := range idmap[{{if $usingGlobalID }}node.GlobalID(){{ else }}node.ID{{ end }}] {
+        for _, noder := range idmap[{{if $usingGlobalID }}node.GlobalID(ctx){{ else }}node.ID{{ end }}] {
         *noder = node
         }
         }

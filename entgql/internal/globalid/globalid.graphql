@@ -1,16 +1,16 @@
 directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 
 interface Node {
-    id: ID!
+    id: ID! @goField(name: "GlobalID")
 }
 
 type User implements Node {
-    id: ID!
+    id: ID! @goField(name: "GlobalID")
     name: String!
 }
 
 type Post implements Node {
-    id: ID!
+    id: ID! @goField(name: "GlobalID")
     name: String!
     userID: ID!
     user: User!
