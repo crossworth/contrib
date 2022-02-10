@@ -44,7 +44,6 @@ func main() {
 		`,
 	},
 		entc.Extensions(ex),
-		entc.TemplateDir("../templates"),
 		entc.FeatureNames("entgql/globalid"),
 	)
 	if err != nil {

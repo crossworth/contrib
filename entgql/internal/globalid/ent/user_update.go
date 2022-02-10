@@ -21,11 +21,13 @@ import (
 	"errors"
 	"fmt"
 
+	"entgo.io/contrib/entgql/internal/globalid/ent/post"
 	"entgo.io/contrib/entgql/internal/globalid/ent/predicate"
 	"entgo.io/contrib/entgql/internal/globalid/ent/user"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // UserUpdate is the builder for updating User entities.
@@ -47,9 +49,34 @@ func (uu *UserUpdate) SetName(s string) *UserUpdate {
 	return uu
 }
 
+// SetPostID sets the "post" edge to the Post entity by ID.
+func (uu *UserUpdate) SetPostID(id uuid.UUID) *UserUpdate {
+	uu.mutation.SetPostID(id)
+	return uu
+}
+
+// SetNillablePostID sets the "post" edge to the Post entity by ID if the given value is not nil.
+func (uu *UserUpdate) SetNillablePostID(id *uuid.UUID) *UserUpdate {
+	if id != nil {
+		uu = uu.SetPostID(*id)
+	}
+	return uu
+}
+
+// SetPost sets the "post" edge to the Post entity.
+func (uu *UserUpdate) SetPost(p *Post) *UserUpdate {
+	return uu.SetPostID(p.ID)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
+}
+
+// ClearPost clears the "post" edge to the Post entity.
+func (uu *UserUpdate) ClearPost() *UserUpdate {
+	uu.mutation.ClearPost()
+	return uu
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -131,6 +158,41 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: user.FieldName,
 		})
 	}
+	if uu.mutation.PostCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.PostTable,
+			Columns: []string{user.PostColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: post.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.PostIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.PostTable,
+			Columns: []string{user.PostColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: post.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -156,9 +218,34 @@ func (uuo *UserUpdateOne) SetName(s string) *UserUpdateOne {
 	return uuo
 }
 
+// SetPostID sets the "post" edge to the Post entity by ID.
+func (uuo *UserUpdateOne) SetPostID(id uuid.UUID) *UserUpdateOne {
+	uuo.mutation.SetPostID(id)
+	return uuo
+}
+
+// SetNillablePostID sets the "post" edge to the Post entity by ID if the given value is not nil.
+func (uuo *UserUpdateOne) SetNillablePostID(id *uuid.UUID) *UserUpdateOne {
+	if id != nil {
+		uuo = uuo.SetPostID(*id)
+	}
+	return uuo
+}
+
+// SetPost sets the "post" edge to the Post entity.
+func (uuo *UserUpdateOne) SetPost(p *Post) *UserUpdateOne {
+	return uuo.SetPostID(p.ID)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uuo *UserUpdateOne) Mutation() *UserMutation {
 	return uuo.mutation
+}
+
+// ClearPost clears the "post" edge to the Post entity.
+func (uuo *UserUpdateOne) ClearPost() *UserUpdateOne {
+	uuo.mutation.ClearPost()
+	return uuo
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -263,6 +350,41 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			Value:  value,
 			Column: user.FieldName,
 		})
+	}
+	if uuo.mutation.PostCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.PostTable,
+			Columns: []string{user.PostColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: post.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.PostIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.PostTable,
+			Columns: []string{user.PostColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: post.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &User{config: uuo.config}
 	_spec.Assign = _node.assignValues

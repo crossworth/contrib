@@ -76,13 +76,33 @@ func TestGlobalID(t *testing.T) {
 	suite.Run(t, &globalidTestSuite{})
 }
 
-type response struct {
+type responseUsers struct {
 	Users struct {
 		TotalCount int
 		Edges      []struct {
 			Node struct {
 				ID   string
 				Name string
+			}
+			Cursor string
+		}
+		PageInfo struct {
+			HasNextPage     bool
+			HasPreviousPage bool
+			StartCursor     *string
+			EndCursor       *string
+		}
+	}
+}
+
+type responsePosts struct {
+	Posts struct {
+		TotalCount int
+		Edges      []struct {
+			Node struct {
+				ID     string
+				Name   string
+				UserID string
 			}
 			Cursor string
 		}
@@ -103,7 +123,7 @@ func (s *globalidTestSuite) TestQueryAll() {
 	u3 := s.ent.User.Create().SetName("U3").SaveX(ctx)
 	u4 := s.ent.User.Create().SetName("U4").SaveX(ctx)
 
-	var rsp response
+	var rsp responseUsers
 	err := s.Post(queryAll, &rsp)
 	s.Require().NoError(err)
 	s.Require().Equal(4, rsp.Users.TotalCount)
@@ -142,13 +162,76 @@ func (s *globalidTestSuite) TestPaginationFiltering() {
 		}`
 	)
 	s.Run("with id", func() {
-		var rsp response
+		var rsp responseUsers
 		err := s.Post(query, &rsp,
 			client.Var("first", 1),
 			client.Var("id", u1.GlobalID().String()),
 		)
 		s.NoError(err)
 		s.Require().Equal(1, rsp.Users.TotalCount)
+	})
+}
+
+func (s *globalidTestSuite) TestPaginationFilteringEdge() {
+	ctx := context.Background()
+	s.ent.User.Delete().ExecX(ctx)
+	u1 := s.ent.User.Create().SetName("U1").SaveX(ctx)
+	u2 := s.ent.User.Create().SetName("U2").SaveX(ctx)
+	u3 := s.ent.User.Create().SetName("U3").SaveX(ctx)
+	u4 := s.ent.User.Create().SetName("U4").SaveX(ctx)
+
+	p1 := s.ent.Post.Create().SetName("P1").SetUser(u1).SaveX(ctx)
+	s.ent.Post.Create().SetName("P2").SetUser(u2).SaveX(ctx)
+	s.ent.Post.Create().SetName("P3").SetUser(u3).SaveX(ctx)
+	s.ent.Post.Create().SetName("P4").SetUser(u4).SaveX(ctx)
+
+	const (
+		query = `query($after: Cursor, $first: Int, $before: Cursor, $last: Int, $userID: ID, $hasUserWith: [UserWhereInput!]) {
+			posts(after: $after, first: $first, before: $before, last: $last, where: {userID: $userID, hasUserWith: $hasUserWith}) {
+				totalCount
+				edges {
+					node {
+						id
+						name
+						userID
+					}
+					cursor
+				}
+				pageInfo {
+					hasNextPage
+					hasPreviousPage
+					startCursor
+					endCursor
+				}
+			}
+		}`
+	)
+	s.Run("with userID", func() {
+		var rsp responsePosts
+		err := s.Post(query, &rsp,
+			client.Var("first", 10),
+			client.Var("userID", u1.GlobalID().String()),
+		)
+		s.NoError(err)
+		s.Require().Equal(1, rsp.Posts.TotalCount)
+		s.Require().Equal("P1", rsp.Posts.Edges[0].Node.Name)
+		s.Require().Equal(p1.GlobalID().String(), rsp.Posts.Edges[0].Node.UserID)
+	})
+
+	s.Run("with hasUserWith", func() {
+		var rsp responsePosts
+		err := s.Post(query, &rsp,
+			client.Var("first", 10),
+			client.Var("hasUserWith", []map[string]string{
+				{
+					"id": u1.GlobalID().String(),
+				},
+			}),
+		)
+		s.NoError(err)
+		s.Require().Equal(1, rsp.Posts.TotalCount)
+		s.Require().Equal("P1", rsp.Posts.Edges[0].Node.Name)
+		s.Require().Equal(p1.GlobalID().String(), rsp.Posts.Edges[0].Node.UserID)
 	})
 }
 

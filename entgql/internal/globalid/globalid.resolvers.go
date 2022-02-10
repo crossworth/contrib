@@ -24,8 +24,11 @@ import (
 )
 
 func (r *postResolver) ID(ctx context.Context, obj *ent.Post) (*ent.GlobalID, error) {
-	id := obj.GlobalID()
-	return &id, nil
+	return obj.GlobalIDPtr(), nil
+}
+
+func (r *postResolver) UserID(ctx context.Context, obj *ent.Post) (*ent.GlobalID, error) {
+	return obj.GlobalIDPtr(), nil
 }
 
 func (r *queryResolver) Node(ctx context.Context, id ent.GlobalID) (ent.Noder, error) {
@@ -40,9 +43,12 @@ func (r *queryResolver) Users(ctx context.Context, after *ent.Cursor, first *int
 	return r.client.User.Query().Paginate(ctx, after, first, before, last, ent.WithUserFilter(where.Filter))
 }
 
+func (r *queryResolver) Posts(ctx context.Context, after *ent.Cursor, first *int, before *ent.Cursor, last *int, where *ent.PostWhereInput) (*ent.PostConnection, error) {
+	return r.client.Post.Query().Paginate(ctx, after, first, before, last, ent.WithPostFilter(where.Filter))
+}
+
 func (r *userResolver) ID(ctx context.Context, obj *ent.User) (*ent.GlobalID, error) {
-	id := obj.GlobalID()
-	return &id, nil
+	return obj.GlobalIDPtr(), nil
 }
 
 // Post returns PostResolver implementation.

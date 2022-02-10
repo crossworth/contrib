@@ -34,6 +34,9 @@ var (
 	// EnumTemplate adds a template implementing MarshalGQL/UnmarshalGQL methods for enums.
 	EnumTemplate = parseT("template/enum.tmpl")
 
+	// GlobalIDTemplate implements the GlobalID.
+	GlobalIDTemplate = parseT("template/globalid.tmpl")
+
 	// NodeTemplate implements the Relay Node interface for all types.
 	NodeTemplate = parseT("template/node.tmpl")
 
@@ -55,6 +58,7 @@ var (
 	AllTemplates = []*gen.Template{
 		CollectionTemplate,
 		EnumTemplate,
+		GlobalIDTemplate,
 		NodeTemplate,
 		PaginationTemplate,
 		TransactionTemplate,

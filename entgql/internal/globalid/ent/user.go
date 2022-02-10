@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"entgo.io/contrib/entgql/internal/globalid/ent/post"
 	"entgo.io/contrib/entgql/internal/globalid/ent/user"
 	"entgo.io/ent/dialect/sql"
 )
@@ -31,6 +32,32 @@ type User struct {
 	ID int `json:"id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges UserEdges `json:"edges"`
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// Post holds the value of the post edge.
+	Post *Post `json:"post,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// PostOrErr returns the Post value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e UserEdges) PostOrErr() (*Post, error) {
+	if e.loadedTypes[0] {
+		if e.Post == nil {
+			// The edge post was loaded in eager-loading,
+			// but was not found.
+			return nil, &NotFoundError{label: post.Label}
+		}
+		return e.Post, nil
+	}
+	return nil, &NotLoadedError{edge: "post"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -72,6 +99,11 @@ func (u *User) assignValues(columns []string, values []interface{}) error {
 		}
 	}
 	return nil
+}
+
+// QueryPost queries the "post" edge of the User entity.
+func (u *User) QueryPost() *PostQuery {
+	return (&UserClient{config: u.config}).QueryPost(u)
 }
 
 // Update returns a builder for updating this User.

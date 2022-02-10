@@ -16,19 +16,29 @@ in the LICENSE file in the root directory of this source tree.
 
     {{ $gqlNodes := filterNodes $.Nodes }}
 
-    {{/* Ensure all id types have the same type if globalid is not enabled */}}
     {{ $idType := $.IDType }}
     {{ $idTypeStr := print $.IDType }}
+    {{ $usingGlobalID := false }}
 
-    {{if $.Config.FeatureEnabled "entgql/globalid" }}
+    {{ range $n := $.Nodes }}
+        {{ if $n.ID.Annotations.EntGQL.GlobalID }}
+            {{ $usingGlobalID = true }}
+        {{ else }}
+            {{ if $usingGlobalID }}
+                {{ fail "all ids should have entgql.GlobalID() annotation" }}
+            {{ end }}
+        {{ end }}
+    {{ end }}
+
+    {{ if and $usingGlobalID (hasTemplate "gql_globalid") }}
         {{ $idTypeStr = "GlobalID" }}
     {{ end }}
 
-    {{ if and (gt (len $gqlNodes) 0) (not ($.Config.FeatureEnabled "entgql/globalid")) }}
+    {{ if and (gt (len $gqlNodes) 0) (not $usingGlobalID) }}
         {{ $idType = (index $gqlNodes 0).ID.Type }}
         {{ range $n := (slice $.Nodes 1) }}
             {{ if ne $idType.Type $n.ID.Type.Type }}
-                {{ fail "node does not support multiple id types" }}
+                {{ fail "node does not support multiple id types"  }}
             {{ end }}
         {{ end }}
     {{ end }}
@@ -51,6 +61,14 @@ in the LICENSE file in the root directory of this source tree.
     "golang.org/x/sync/semaphore"
     )
 
+    {{ if $usingGlobalID }}
+        // typesToTable map the GlobalID types to the table names.
+        var typesToTable = map[string]string{
+        {{- range $n := $.Nodes }}
+            type{{ $n.Name }}: {{lower $n.Name }}.Table,
+        {{- end }}
+        }
+    {{ end }}
 
     // Noder wraps the basic Node method.
     type Noder interface {
@@ -84,7 +102,7 @@ in the LICENSE file in the root directory of this source tree.
         {{ $receiver := $n.Receiver }}
         func ({{ $receiver }} *{{ $n.Name }}) Node(ctx context.Context) (node *Node, err error) {
         node = &Node{
-        ID: {{if $.Config.FeatureEnabled "entgql/globalid" }}{{ $receiver }}.GlobalID(){{ else }}{{ $receiver }}.ID{{ end }},
+        ID: {{ if $usingGlobalID }}{{ $receiver }}.GlobalID(){{ else }}{{ $receiver }}.ID{{ end }},
         Type: "{{ $n.Name }}",
         Fields: make([]*Field, {{ len $n.Fields }}),
         Edges: make([]*Edge, {{ len (filterEdges $n.Edges) }}),
@@ -159,21 +177,17 @@ in the LICENSE file in the root directory of this source tree.
     for _, opt := range opts {
     opt(nopts)
     }
-    {{ if $.Config.FeatureEnabled "entgql/globalid" | not }}
+    {{ if $usingGlobalID | not }}
         if nopts.nodeType == nil {
         nopts.nodeType = func(ctx context.Context, id {{ $idTypeStr }}) (string, error) {
-
-        return c.tables.nodeType(ctx, c.driver, id)
-
         {{- if $idType.Numeric }}
             return c.tables.nodeType(ctx, c.driver, id)
         {{- else }}
             return "", fmt.Errorf("cannot resolve noder (%v) without its type", id)
         {{- end }}
-
         }
         }
-    {{ end }}
+    {{ end -}}
     return nopts
     }
 
@@ -189,10 +203,9 @@ in the LICENSE file in the root directory of this source tree.
     err = multierror.Append(err, entgql.ErrNodeNotFound(id))
     }
     }()
-    {{ if $.Config.FeatureEnabled "entgql/globalid" }}
-
+    {{ if $usingGlobalID -}}
         return c.noder(ctx, id.Type, id)
-    {{ else }}
+    {{- else }}
         table, err := c.newNodeOpts(opts).nodeType(ctx, id)
         if err != nil {
         return nil, err
@@ -202,20 +215,18 @@ in the LICENSE file in the root directory of this source tree.
     }
 
     func (c *Client) noder(ctx context.Context, table string, id {{ $idTypeStr }}) (Noder, error) {
-
-    {{ if $.Config.FeatureEnabled "entgql/globalid"}}
+    {{- if $usingGlobalID }}
         table = typesToTable[table]
-    {{ end }}
-
+    {{ end -}}
     switch table {
     {{- range $n := $gqlNodes }}
         {{- $typeName :=  $n.ID.Type.Type.String }}
         {{ if $n.ID.Type.RType }}
-            {{ $typeName = $n.ID.Type.RType.Name }}
-        {{ end -}}
+            {{- $typeName = $n.ID.Type.RType.Name -}}
+        {{- end -}}
         case {{ $n.Package }}.Table:
         n, err := c.{{ $n.Name }}.Query().
-        Where({{ $n.Package }}.ID({{if $.Config.FeatureEnabled "entgql/globalid" }}id.{{ pascal $typeName }}(){{ else }}id{{ end }})).
+        Where({{ $n.Package }}.ID({{if $usingGlobalID }}id.{{ pascal $typeName }}(){{ else }}id{{ end }})).
         {{- if hasTemplate "gql_collection" }}
             CollectFields(ctx, "{{ $n.Name }}").
         {{- end }}
@@ -230,10 +241,10 @@ in the LICENSE file in the root directory of this source tree.
     }
     }
 
-    func (c *Client) Noders(ctx context.Context, ids []{{if $.Config.FeatureEnabled "entgql/globalid" }}*{{end}}{{ $idTypeStr }}, opts ...NodeOption) ([]Noder, error) {
+    func (c *Client) Noders(ctx context.Context, ids []{{if $usingGlobalID }}*{{end}}{{ $idTypeStr }}, opts ...NodeOption) ([]Noder, error) {
     switch len(ids) {
     case 1:
-    noder, err := c.Noder(ctx, {{if $.Config.FeatureEnabled "entgql/globalid" }}*{{end}}ids[0], opts...)
+    noder, err := c.Noder(ctx, {{if $usingGlobalID }}*{{end}}ids[0], opts...)
     if err != nil {
     return nil, err
     }
@@ -246,21 +257,21 @@ in the LICENSE file in the root directory of this source tree.
     errors := make([]error, len(ids))
     tables := make(map[string][]{{ $idTypeStr }})
     id2idx := make(map[{{ $idTypeStr }}][]int, len(ids))
-    {{ if $.Config.FeatureEnabled "entgql/globalid" | not }}
+    {{ if $usingGlobalID | not -}}
         nopts := c.newNodeOpts(opts)
-    {{ end }}
+    {{ end -}}
     for i, id := range ids {
-    {{ if $.Config.FeatureEnabled "entgql/globalid" }}
+    {{ if $usingGlobalID -}}
         table := id.Type
-    {{ else }}
+    {{- else }}
         table, err := nopts.nodeType(ctx, id)
         if err != nil {
         errors[i] = err
         continue
         }
     {{ end }}
-    tables[table] = append(tables[table], {{if $.Config.FeatureEnabled "entgql/globalid" }}*{{end}}id)
-    id2idx[{{if $.Config.FeatureEnabled "entgql/globalid" }}*{{end}}id] = append(id2idx[{{if $.Config.FeatureEnabled "entgql/globalid" }}*{{end}}id], i)
+    tables[table] = append(tables[table], {{if $usingGlobalID }}*{{end}}id)
+    id2idx[{{if $usingGlobalID }}*{{end}}id] = append(id2idx[{{if $usingGlobalID }}*{{end}}id], i)
     }
 
     for table, ids := range tables {
@@ -303,20 +314,18 @@ in the LICENSE file in the root directory of this source tree.
     for i, id := range ids {
     idmap[id] = append(idmap[id], &noders[i])
     }
-
-    {{ if $.Config.FeatureEnabled "entgql/globalid"}}
+    {{ if $usingGlobalID -}}
         table = typesToTable[table]
-    {{ end }}
-
+    {{ end -}}
     switch table {
     {{- range $n := $gqlNodes }}
         {{- $typeName :=  $n.ID.Type.Type.String }}
         {{ if $n.ID.Type.RType }}
-            {{ $typeName = $n.ID.Type.RType.Name }}
-        {{ end -}}
+            {{- $typeName = $n.ID.Type.RType.Name -}}
+        {{- end -}}
         case {{ $n.Package }}.Table:
         nodes, err := c.{{ $n.Name }}.Query().
-        Where({{ $n.Package }}.IDIn({{if $.Config.FeatureEnabled "entgql/globalid" }}GlobalIDsTo{{ pascal $typeName}}s(ids){{else}}ids{{end}}...)).
+        Where({{ $n.Package }}.IDIn({{if $usingGlobalID }}GlobalIDsTo{{ pascal $typeName}}s(ids){{else}}ids{{end}}...)).
         {{- if hasTemplate "gql_collection" }}
             CollectFields(ctx, "{{ $n.Name }}").
         {{- end }}
@@ -325,7 +334,7 @@ in the LICENSE file in the root directory of this source tree.
         return nil, err
         }
         for _, node := range nodes {
-        for _, noder := range idmap[{{if $.Config.FeatureEnabled "entgql/globalid" }}node.GlobalID(){{ else }}node.ID{{ end }}] {
+        for _, noder := range idmap[{{if $usingGlobalID }}node.GlobalID(){{ else }}node.ID{{ end }}] {
         *noder = node
         }
         }
@@ -342,7 +351,7 @@ in the LICENSE file in the root directory of this source tree.
     value atomic.Value
     }
 
-    {{ if and $idType.Numeric ($.Config.FeatureEnabled "entgql/globalid" | not) }}
+    {{ if and $idType.Numeric ($usingGlobalID | not) }}
         func (t *tables) nodeType(ctx context.Context, drv dialect.Driver, id {{ $idType }}) (string, error) {
         tables, err := t.Load(ctx, drv)
         if err != nil {

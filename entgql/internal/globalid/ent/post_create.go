@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"entgo.io/contrib/entgql/internal/globalid/ent/post"
+	"entgo.io/contrib/entgql/internal/globalid/ent/user"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
@@ -40,10 +41,21 @@ func (pc *PostCreate) SetName(s string) *PostCreate {
 	return pc
 }
 
+// SetUserID sets the "user_id" field.
+func (pc *PostCreate) SetUserID(i int) *PostCreate {
+	pc.mutation.SetUserID(i)
+	return pc
+}
+
 // SetID sets the "id" field.
 func (pc *PostCreate) SetID(u uuid.UUID) *PostCreate {
 	pc.mutation.SetID(u)
 	return pc
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (pc *PostCreate) SetUser(u *User) *PostCreate {
+	return pc.SetUserID(u.ID)
 }
 
 // Mutation returns the PostMutation object of the builder.
@@ -128,6 +140,12 @@ func (pc *PostCreate) check() error {
 	if _, ok := pc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Post.name"`)}
 	}
+	if _, ok := pc.mutation.UserID(); !ok {
+		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "Post.user_id"`)}
+	}
+	if _, ok := pc.mutation.UserID(); !ok {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Post.user"`)}
+	}
 	return nil
 }
 
@@ -171,6 +189,26 @@ func (pc *PostCreate) createSpec() (*Post, *sqlgraph.CreateSpec) {
 			Column: post.FieldName,
 		})
 		_node.Name = value
+	}
+	if nodes := pc.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   post.UserTable,
+			Columns: []string{post.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: user.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.UserID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

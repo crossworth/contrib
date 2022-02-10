@@ -35,6 +35,8 @@ type Annotation struct {
 	Type string `json:"Type,omitempty"`
 	// Skip excludes the type
 	Skip bool `json:"Skip,omitempty"`
+	// GlobalID defines that the field should be a GlobalID.
+	GlobalID bool `json:"GlobalID,omitempty"`
 }
 
 // Name implements ent.Annotation interface.
@@ -45,6 +47,11 @@ func (Annotation) Name() string {
 // OrderField returns an order field annotation.
 func OrderField(name string) Annotation {
 	return Annotation{OrderField: name}
+}
+
+// GlobalID returns an GlobalID field annotation.
+func GlobalID() Annotation {
+	return Annotation{GlobalID: true}
 }
 
 // Bind returns a binding annotation.

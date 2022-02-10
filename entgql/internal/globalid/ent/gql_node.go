@@ -31,6 +31,12 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
+// typesToTable map the GlobalID types to the table names.
+var typesToTable = map[string]string{
+	typePost: post.Table,
+	typeUser: user.Table,
+}
+
 // Noder wraps the basic Node method.
 type Noder interface {
 	Node(context.Context) (*Node, error)
@@ -62,8 +68,8 @@ func (po *Post) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     po.GlobalID(),
 		Type:   "Post",
-		Fields: make([]*Field, 1),
-		Edges:  make([]*Edge, 0),
+		Fields: make([]*Field, 2),
+		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(po.Name); err != nil {
@@ -74,6 +80,24 @@ func (po *Post) Node(ctx context.Context) (node *Node, err error) {
 		Name:  "name",
 		Value: string(buf),
 	}
+	if buf, err = json.Marshal(po.UserID); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "int",
+		Name:  "user_id",
+		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "User",
+		Name: "user",
+	}
+	err = po.QueryUser().
+		Select(user.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
+	}
 	return node, nil
 }
 
@@ -82,7 +106,7 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 		ID:     u.GlobalID(),
 		Type:   "User",
 		Fields: make([]*Field, 1),
-		Edges:  make([]*Edge, 0),
+		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
 	if buf, err = json.Marshal(u.Name); err != nil {
@@ -92,6 +116,16 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 		Type:  "string",
 		Name:  "name",
 		Value: string(buf),
+	}
+	node.Edges[0] = &Edge{
+		Type: "Post",
+		Name: "post",
+	}
+	err = u.QueryPost().
+		Select(post.FieldID).
+		Scan(ctx, &node.Edges[0].IDs)
+	if err != nil {
+		return nil, err
 	}
 	return node, nil
 }
@@ -134,7 +168,6 @@ func (c *Client) newNodeOpts(opts []NodeOption) *nodeOptions {
 	for _, opt := range opts {
 		opt(nopts)
 	}
-
 	return nopts
 }
 
@@ -150,17 +183,12 @@ func (c *Client) Noder(ctx context.Context, id GlobalID, opts ...NodeOption) (_ 
 			err = multierror.Append(err, entgql.ErrNodeNotFound(id))
 		}
 	}()
-
 	return c.noder(ctx, id.Type, id)
-
 }
 
 func (c *Client) noder(ctx context.Context, table string, id GlobalID) (Noder, error) {
-
 	table = typesToTable[table]
-
 	switch table {
-
 	case post.Table:
 		n, err := c.Post.Query().
 			Where(post.ID(id.UUID())).
@@ -200,11 +228,8 @@ func (c *Client) Noders(ctx context.Context, ids []*GlobalID, opts ...NodeOption
 	errors := make([]error, len(ids))
 	tables := make(map[string][]GlobalID)
 	id2idx := make(map[GlobalID][]int, len(ids))
-
 	for i, id := range ids {
-
 		table := id.Type
-
 		tables[table] = append(tables[table], *id)
 		id2idx[*id] = append(id2idx[*id], i)
 	}
@@ -249,11 +274,8 @@ func (c *Client) noders(ctx context.Context, table string, ids []GlobalID) ([]No
 	for i, id := range ids {
 		idmap[id] = append(idmap[id], &noders[i])
 	}
-
 	table = typesToTable[table]
-
 	switch table {
-
 	case post.Table:
 		nodes, err := c.Post.Query().
 			Where(post.IDIn(GlobalIDsToUUIDs(ids)...)).

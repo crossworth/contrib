@@ -23,8 +23,17 @@ const (
 	FieldID = "id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
+	// EdgePost holds the string denoting the post edge name in mutations.
+	EdgePost = "post"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// PostTable is the table that holds the post relation/edge.
+	PostTable = "posts"
+	// PostInverseTable is the table name for the Post entity.
+	// It exists in this package in order to avoid circular dependency with the "post" package.
+	PostInverseTable = "posts"
+	// PostColumn is the table column denoting the post relation/edge.
+	PostColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.

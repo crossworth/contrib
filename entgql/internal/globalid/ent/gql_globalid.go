@@ -37,11 +37,6 @@ const (
 	typeUser = "user"
 )
 
-var typesToTable = map[string]string{
-	typePost: post.Table,
-	typeUser: user.Table,
-}
-
 // GlobalID is a global unique identifier that contains a a type and id.
 type GlobalID struct {
 	Type, ID     string
@@ -136,6 +131,12 @@ func (po *Post) GlobalID() GlobalID {
 	return GlobalID{Type: typePost, ID: fmt.Sprintf("%s", po.ID), resolvedType: po.ID}
 }
 
+// GlobalIDPtr returns the pointer for the global identifier for the given Post node.
+func (po *Post) GlobalIDPtr() *GlobalID {
+	id := po.GlobalID()
+	return &id
+}
+
 // NewPostGlobalID creates a global identifier for the given Post node.
 func NewPostGlobalID(id uuid.UUID) GlobalID {
 	return GlobalID{Type: typePost, ID: fmt.Sprintf("%s", id), resolvedType: id}
@@ -144,6 +145,12 @@ func NewPostGlobalID(id uuid.UUID) GlobalID {
 // GlobalID returns the global identifier for the given User node.
 func (u *User) GlobalID() GlobalID {
 	return GlobalID{Type: typeUser, ID: fmt.Sprintf("%d", u.ID), resolvedType: u.ID}
+}
+
+// GlobalIDPtr returns the pointer for the global identifier for the given User node.
+func (u *User) GlobalIDPtr() *GlobalID {
+	id := u.GlobalID()
+	return &id
 }
 
 // NewUserGlobalID creates a global identifier for the given User node.

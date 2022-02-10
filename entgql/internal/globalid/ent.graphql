@@ -31,6 +31,10 @@ input UserWhereInput {
   idGTE: ID
   idLT: ID
   idLTE: ID
+  
+  """post edge predicates"""
+  hasPost: Boolean
+  hasPostWith: [PostWhereInput!]
 }
 
 """
@@ -57,6 +61,12 @@ input PostWhereInput {
   nameEqualFold: String
   nameContainsFold: String
   
+  """user_id field predicates"""
+  userID: ID
+  userIDNEQ: ID
+  userIDIn: [ID!]
+  userIDNotIn: [ID!]
+  
   """id field predicates"""
   id: ID
   idNEQ: ID
@@ -66,4 +76,8 @@ input PostWhereInput {
   idGTE: ID
   idLT: ID
   idLTE: ID
+  
+  """user edge predicates"""
+  hasUser: Boolean
+  hasUserWith: [UserWhereInput!]
 }

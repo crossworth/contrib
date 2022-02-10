@@ -15,7 +15,9 @@
 package schema
 
 import (
+	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 )
@@ -28,7 +30,15 @@ type Post struct {
 // Fields returns post fields.
 func (Post) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).Default(uuid.New),
+		field.UUID("id", uuid.UUID{}).Default(uuid.New).Annotations(entgql.GlobalID()),
 		field.String("name"),
+		field.Int("user_id").Annotations(entgql.GlobalID()),
+	}
+}
+
+// Edges of the schema.
+func (Post) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("user", User.Type).Field("user_id").Ref("post").Unique().Required(),
 	}
 }

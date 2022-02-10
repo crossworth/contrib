@@ -8,6 +8,22 @@ in the LICENSE file in the root directory of this source tree.
 
     {{- /*gotype: entgo.io/ent/entc/gen.Graph*/ -}}
 
+    {{ $usingGlobalID := false }}
+
+    {{ range $n := (slice $.Nodes 1) }}
+        {{ if $n.ID.Annotations.EntGQL.GlobalID }}
+            {{ $usingGlobalID = true }}
+        {{ else }}
+            {{ if $usingGlobalID }}
+                {{ fail "all ids should have entgql.GlobalID() annotation" }}
+            {{ end }}
+        {{ end }}
+    {{ end }}
+
+    {{if not (hasTemplate "gql_globalid") }}
+        {{ $usingGlobalID = false }}
+    {{ end }}
+
     {{ $pkg := base $.Config.Package }}
     {{- with extend $ "Package" $pkg }}
         {{ template "header" . }}
@@ -46,11 +62,9 @@ in the LICENSE file in the root directory of this source tree.
                 {{- end }}
                 {{- $type := $f.Type }}
 
-                {{- if eq $f.Name "id" }}
-                    {{- if $.Config.FeatureEnabled "entgql/globalid" }}
-                        {{- $type = "GlobalID" }}
-                    {{- end }}
-                {{- end }}
+                {{- if and $usingGlobalID $f.Annotations.EntGQL.GlobalID -}}
+                    {{- $type = "GlobalID" -}}
+                {{- end -}}
 
                 {{- if $op.Niladic }}
                     {{- $type = "bool" }}
@@ -149,44 +163,30 @@ in the LICENSE file in the root directory of this source tree.
                 {{- else }}
                     {{- if $op.Variadic }}
 
-                        {{- if eq $f.Name "id" }}
-                            {{- if $.Config.FeatureEnabled "entgql/globalid" }}
-                                {{- $typeName :=  $n.ID.Type.Type.String }}
-                                {{ if $n.ID.Type.RType }}
-                                    {{ $typeName = $n.ID.Type.RType.Name }}
-                                {{ end -}}
+                        {{- if and $usingGlobalID $f.Annotations.EntGQL.GlobalID }}
+                            {{- $typeName :=  $f.Type.Type.String }}
+                            {{ if $f.Type.RType }}
+                                {{ $typeName = $f.Type.RType.Name }}
+                            {{ end -}}
 
-                                if i.{{ $field }} != nil {
-                                predicates = append(predicates, {{ $n.Package }}.{{ $func }}({{if $.Config.FeatureEnabled "entgql/globalid" }}GlobalIDsTo{{ pascal $typeName}}s(i.{{ $field }}){{else}}i.{{ $field }}{{end}}...))
-                                }
-
-                            {{- else }}
-                                if len(i.{{ $field }}) > 0 {
-                                predicates = append(predicates, {{ $n.Package }}.{{ $func }}(i.{{ $field }}...))
-                                }
-                            {{- end }}
+                            if i.{{ $field }} != nil {
+                            predicates = append(predicates, {{ $n.Package }}.{{ $func }}(GlobalIDsTo{{ pascal $typeName}}s(i.{{ $field }})...))
+                            }
                         {{- else }}
                             if len(i.{{ $field }}) > 0 {
                             predicates = append(predicates, {{ $n.Package }}.{{ $func }}(i.{{ $field }}...))
                             }
                         {{- end }}
                     {{- else }}
-                        {{- if eq $f.Name "id" }}
-                            {{- if $.Config.FeatureEnabled "entgql/globalid" }}
-                                {{- $typeName :=  $n.ID.Type.Type.String }}
-                                {{ if $n.ID.Type.RType }}
-                                    {{ $typeName = $n.ID.Type.RType.Name }}
-                                {{ end -}}
+                        {{- if and $usingGlobalID $f.Annotations.EntGQL.GlobalID }}
+                            {{- $typeName :=  $f.Type.Type.String }}
+                            {{ if $f.Type.RType }}
+                                {{ $typeName = $f.Type.RType.Name }}
+                            {{ end -}}
 
-                                if i.{{ $field }} != nil {
-                                predicates = append(predicates, {{ $n.Package }}.{{ $func }}(i.{{ $field }}.{{ pascal $typeName}}()))
-                                }
-
-                            {{- else }}
-                                if i.{{ $field }} != nil {
-                                predicates = append(predicates, {{ $n.Package }}.{{ $func }}({{ if not $f.Type.RType.IsPtr }}*{{ end }}i.{{ $field }}))
-                                }
-                            {{- end }}
+                            if i.{{ $field }} != nil {
+                            predicates = append(predicates, {{ $n.Package }}.{{ $func }}(i.{{ $field }}.{{ pascal $typeName}}()))
+                            }
                         {{- else }}
                             if i.{{ $field }} != nil {
                             predicates = append(predicates, {{ $n.Package }}.{{ $func }}({{ if not $f.Type.RType.IsPtr }}*{{ end }}i.{{ $field }}))

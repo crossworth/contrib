@@ -23,6 +23,7 @@ import (
 
 	"entgo.io/contrib/entgql/internal/globalid/ent/post"
 	"entgo.io/contrib/entgql/internal/globalid/ent/predicate"
+	"entgo.io/contrib/entgql/internal/globalid/ent/user"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -47,9 +48,26 @@ func (pu *PostUpdate) SetName(s string) *PostUpdate {
 	return pu
 }
 
+// SetUserID sets the "user_id" field.
+func (pu *PostUpdate) SetUserID(i int) *PostUpdate {
+	pu.mutation.SetUserID(i)
+	return pu
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (pu *PostUpdate) SetUser(u *User) *PostUpdate {
+	return pu.SetUserID(u.ID)
+}
+
 // Mutation returns the PostMutation object of the builder.
 func (pu *PostUpdate) Mutation() *PostMutation {
 	return pu.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (pu *PostUpdate) ClearUser() *PostUpdate {
+	pu.mutation.ClearUser()
+	return pu
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -59,12 +77,18 @@ func (pu *PostUpdate) Save(ctx context.Context) (int, error) {
 		affected int
 	)
 	if len(pu.hooks) == 0 {
+		if err = pu.check(); err != nil {
+			return 0, err
+		}
 		affected, err = pu.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*PostMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
+			}
+			if err = pu.check(); err != nil {
+				return 0, err
 			}
 			pu.mutation = mutation
 			affected, err = pu.sqlSave(ctx)
@@ -106,6 +130,14 @@ func (pu *PostUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (pu *PostUpdate) check() error {
+	if _, ok := pu.mutation.UserID(); pu.mutation.UserCleared() && !ok {
+		return errors.New(`ent: clearing a required unique edge "Post.user"`)
+	}
+	return nil
+}
+
 func (pu *PostUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
@@ -130,6 +162,41 @@ func (pu *PostUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Value:  value,
 			Column: post.FieldName,
 		})
+	}
+	if pu.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   post.UserTable,
+			Columns: []string{post.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: user.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := pu.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   post.UserTable,
+			Columns: []string{post.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: user.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, pu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -156,9 +223,26 @@ func (puo *PostUpdateOne) SetName(s string) *PostUpdateOne {
 	return puo
 }
 
+// SetUserID sets the "user_id" field.
+func (puo *PostUpdateOne) SetUserID(i int) *PostUpdateOne {
+	puo.mutation.SetUserID(i)
+	return puo
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (puo *PostUpdateOne) SetUser(u *User) *PostUpdateOne {
+	return puo.SetUserID(u.ID)
+}
+
 // Mutation returns the PostMutation object of the builder.
 func (puo *PostUpdateOne) Mutation() *PostMutation {
 	return puo.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (puo *PostUpdateOne) ClearUser() *PostUpdateOne {
+	puo.mutation.ClearUser()
+	return puo
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -175,12 +259,18 @@ func (puo *PostUpdateOne) Save(ctx context.Context) (*Post, error) {
 		node *Post
 	)
 	if len(puo.hooks) == 0 {
+		if err = puo.check(); err != nil {
+			return nil, err
+		}
 		node, err = puo.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*PostMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
+			}
+			if err = puo.check(); err != nil {
+				return nil, err
 			}
 			puo.mutation = mutation
 			node, err = puo.sqlSave(ctx)
@@ -220,6 +310,14 @@ func (puo *PostUpdateOne) ExecX(ctx context.Context) {
 	if err := puo.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// check runs all checks and user-defined validators on the builder.
+func (puo *PostUpdateOne) check() error {
+	if _, ok := puo.mutation.UserID(); puo.mutation.UserCleared() && !ok {
+		return errors.New(`ent: clearing a required unique edge "Post.user"`)
+	}
+	return nil
 }
 
 func (puo *PostUpdateOne) sqlSave(ctx context.Context) (_node *Post, err error) {
@@ -263,6 +361,41 @@ func (puo *PostUpdateOne) sqlSave(ctx context.Context) (_node *Post, err error) 
 			Value:  value,
 			Column: post.FieldName,
 		})
+	}
+	if puo.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   post.UserTable,
+			Columns: []string{post.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: user.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := puo.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: true,
+			Table:   post.UserTable,
+			Columns: []string{post.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: user.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Post{config: puo.config}
 	_spec.Assign = _node.assignValues

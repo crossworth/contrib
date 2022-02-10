@@ -31,6 +31,14 @@ func (po *PostQuery) CollectFields(ctx context.Context, satisfies ...string) *Po
 }
 
 func (po *PostQuery) collectField(ctx *graphql.OperationContext, field graphql.CollectedField, satisfies ...string) *PostQuery {
+	for _, field := range graphql.CollectFields(ctx, field.Selections, satisfies) {
+		switch field.Name {
+		case "user":
+			po = po.WithUser(func(query *UserQuery) {
+				query.collectField(ctx, field)
+			})
+		}
+	}
 	return po
 }
 
@@ -43,5 +51,13 @@ func (u *UserQuery) CollectFields(ctx context.Context, satisfies ...string) *Use
 }
 
 func (u *UserQuery) collectField(ctx *graphql.OperationContext, field graphql.CollectedField, satisfies ...string) *UserQuery {
+	for _, field := range graphql.CollectFields(ctx, field.Selections, satisfies) {
+		switch field.Name {
+		case "post":
+			u = u.WithPost(func(query *PostQuery) {
+				query.collectField(ctx, field)
+			})
+		}
+	}
 	return u
 }

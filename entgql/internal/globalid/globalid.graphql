@@ -12,6 +12,8 @@ type User implements Node {
 type Post implements Node {
     id: ID!
     name: String!
+    userID: ID!
+    user: User!
 }
 
 scalar Cursor
@@ -34,8 +36,20 @@ type UserEdge {
     cursor: Cursor!
 }
 
+type PostConnection {
+    totalCount: Int!
+    pageInfo: PageInfo!
+    edges: [PostEdge]
+}
+
+type PostEdge {
+    node: Post
+    cursor: Cursor!
+}
+
 type Query {
     node(id: ID!): Node
     nodes(ids: [ID!]!): [Node]!
     users(after: Cursor, first: Int, before: Cursor, last: Int,where: UserWhereInput): UserConnection
+    posts(after: Cursor, first: Int, before: Cursor, last: Int,where: PostWhereInput): PostConnection
 }

@@ -54,6 +54,16 @@ type PostWhereInput struct {
 	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
 	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
 	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+
+	// "user_id" field predicates.
+	UserID      *GlobalID  `json:"userID,omitempty"`
+	UserIDNEQ   *GlobalID  `json:"userIDNEQ,omitempty"`
+	UserIDIn    []GlobalID `json:"userIDIn,omitempty"`
+	UserIDNotIn []GlobalID `json:"userIDNotIn,omitempty"`
+
+	// "user" edge predicates.
+	HasUser     *bool             `json:"hasUser,omitempty"`
+	HasUserWith []*UserWhereInput `json:"hasUserWith,omitempty"`
 }
 
 // Filter applies the PostWhereInput filter on the PostQuery builder.
@@ -186,7 +196,37 @@ func (i *PostWhereInput) P() (predicate.Post, error) {
 	if i.NameContainsFold != nil {
 		predicates = append(predicates, post.NameContainsFold(*i.NameContainsFold))
 	}
+	if i.UserID != nil {
+		predicates = append(predicates, post.UserIDEQ(i.UserID.Int()))
+	}
+	if i.UserIDNEQ != nil {
+		predicates = append(predicates, post.UserIDNEQ(i.UserIDNEQ.Int()))
+	}
+	if i.UserIDIn != nil {
+		predicates = append(predicates, post.UserIDIn(GlobalIDsToInts(i.UserIDIn)...))
+	}
+	if i.UserIDNotIn != nil {
+		predicates = append(predicates, post.UserIDNotIn(GlobalIDsToInts(i.UserIDNotIn)...))
+	}
 
+	if i.HasUser != nil {
+		p := post.HasUser()
+		if !*i.HasUser {
+			p = post.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasUserWith) > 0 {
+		with := make([]predicate.User, 0, len(i.HasUserWith))
+		for _, w := range i.HasUserWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, err
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, post.HasUserWith(with...))
+	}
 	switch len(predicates) {
 	case 0:
 		return nil, fmt.Errorf("empty predicate PostWhereInput")
@@ -227,6 +267,10 @@ type UserWhereInput struct {
 	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
 	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
 	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+
+	// "post" edge predicates.
+	HasPost     *bool             `json:"hasPost,omitempty"`
+	HasPostWith []*PostWhereInput `json:"hasPostWith,omitempty"`
 }
 
 // Filter applies the UserWhereInput filter on the UserQuery builder.
@@ -352,6 +396,24 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 		predicates = append(predicates, user.NameContainsFold(*i.NameContainsFold))
 	}
 
+	if i.HasPost != nil {
+		p := user.HasPost()
+		if !*i.HasPost {
+			p = user.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasPostWith) > 0 {
+		with := make([]predicate.Post, 0, len(i.HasPostWith))
+		for _, w := range i.HasPostWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, err
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, user.HasPostWith(with...))
+	}
 	switch len(predicates) {
 	case 0:
 		return nil, fmt.Errorf("empty predicate UserWhereInput")

@@ -27,14 +27,26 @@ const (
 	FieldID = "id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
+	// FieldUserID holds the string denoting the user_id field in the database.
+	FieldUserID = "user_id"
+	// EdgeUser holds the string denoting the user edge name in mutations.
+	EdgeUser = "user"
 	// Table holds the table name of the post in the database.
 	Table = "posts"
+	// UserTable is the table that holds the user relation/edge.
+	UserTable = "posts"
+	// UserInverseTable is the table name for the User entity.
+	// It exists in this package in order to avoid circular dependency with the "user" package.
+	UserInverseTable = "users"
+	// UserColumn is the table column denoting the user relation/edge.
+	UserColumn = "user_id"
 )
 
 // Columns holds all SQL columns for post fields.
 var Columns = []string{
 	FieldID,
 	FieldName,
+	FieldUserID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

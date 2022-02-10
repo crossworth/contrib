@@ -21,9 +21,11 @@ import (
 	"errors"
 	"fmt"
 
+	"entgo.io/contrib/entgql/internal/globalid/ent/post"
 	"entgo.io/contrib/entgql/internal/globalid/ent/user"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 )
 
 // UserCreate is the builder for creating a User entity.
@@ -43,6 +45,25 @@ func (uc *UserCreate) SetName(s string) *UserCreate {
 func (uc *UserCreate) SetID(i int) *UserCreate {
 	uc.mutation.SetID(i)
 	return uc
+}
+
+// SetPostID sets the "post" edge to the Post entity by ID.
+func (uc *UserCreate) SetPostID(id uuid.UUID) *UserCreate {
+	uc.mutation.SetPostID(id)
+	return uc
+}
+
+// SetNillablePostID sets the "post" edge to the Post entity by ID if the given value is not nil.
+func (uc *UserCreate) SetNillablePostID(id *uuid.UUID) *UserCreate {
+	if id != nil {
+		uc = uc.SetPostID(*id)
+	}
+	return uc
+}
+
+// SetPost sets the "post" edge to the Post entity.
+func (uc *UserCreate) SetPost(p *Post) *UserCreate {
+	return uc.SetPostID(p.ID)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -158,6 +179,25 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Column: user.FieldName,
 		})
 		_node.Name = value
+	}
+	if nodes := uc.mutation.PostIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.PostTable,
+			Columns: []string{user.PostColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeUUID,
+					Column: post.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

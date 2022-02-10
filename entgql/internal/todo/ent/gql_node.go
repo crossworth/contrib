@@ -252,13 +252,9 @@ func (c *Client) newNodeOpts(opts []NodeOption) *nodeOptions {
 
 	if nopts.nodeType == nil {
 		nopts.nodeType = func(ctx context.Context, id int) (string, error) {
-
 			return c.tables.nodeType(ctx, c.driver, id)
-			return c.tables.nodeType(ctx, c.driver, id)
-
 		}
 	}
-
 	return nopts
 }
 
@@ -284,7 +280,6 @@ func (c *Client) Noder(ctx context.Context, id int, opts ...NodeOption) (_ Noder
 }
 
 func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error) {
-
 	switch table {
 	case category.Table:
 		n, err := c.Category.Query().
@@ -325,9 +320,7 @@ func (c *Client) Noders(ctx context.Context, ids []int, opts ...NodeOption) ([]N
 	errors := make([]error, len(ids))
 	tables := make(map[string][]int)
 	id2idx := make(map[int][]int, len(ids))
-
 	nopts := c.newNodeOpts(opts)
-
 	for i, id := range ids {
 
 		table, err := nopts.nodeType(ctx, id)
@@ -380,7 +373,6 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 	for i, id := range ids {
 		idmap[id] = append(idmap[id], &noders[i])
 	}
-
 	switch table {
 	case category.Table:
 		nodes, err := c.Category.Query().

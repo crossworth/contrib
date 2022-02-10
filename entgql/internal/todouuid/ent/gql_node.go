@@ -250,13 +250,9 @@ func (c *Client) newNodeOpts(opts []NodeOption) *nodeOptions {
 
 	if nopts.nodeType == nil {
 		nopts.nodeType = func(ctx context.Context, id uuid.UUID) (string, error) {
-
-			return c.tables.nodeType(ctx, c.driver, id)
 			return "", fmt.Errorf("cannot resolve noder (%v) without its type", id)
-
 		}
 	}
-
 	return nopts
 }
 
@@ -282,9 +278,7 @@ func (c *Client) Noder(ctx context.Context, id uuid.UUID, opts ...NodeOption) (_
 }
 
 func (c *Client) noder(ctx context.Context, table string, id uuid.UUID) (Noder, error) {
-
 	switch table {
-
 	case category.Table:
 		n, err := c.Category.Query().
 			Where(category.ID(id)).
@@ -294,7 +288,6 @@ func (c *Client) noder(ctx context.Context, table string, id uuid.UUID) (Noder, 
 			return nil, err
 		}
 		return n, nil
-
 	case todo.Table:
 		n, err := c.Todo.Query().
 			Where(todo.ID(id)).
@@ -325,9 +318,7 @@ func (c *Client) Noders(ctx context.Context, ids []uuid.UUID, opts ...NodeOption
 	errors := make([]error, len(ids))
 	tables := make(map[string][]uuid.UUID)
 	id2idx := make(map[uuid.UUID][]int, len(ids))
-
 	nopts := c.newNodeOpts(opts)
-
 	for i, id := range ids {
 
 		table, err := nopts.nodeType(ctx, id)
@@ -380,9 +371,7 @@ func (c *Client) noders(ctx context.Context, table string, ids []uuid.UUID) ([]N
 	for i, id := range ids {
 		idmap[id] = append(idmap[id], &noders[i])
 	}
-
 	switch table {
-
 	case category.Table:
 		nodes, err := c.Category.Query().
 			Where(category.IDIn(ids...)).
@@ -396,7 +385,6 @@ func (c *Client) noders(ctx context.Context, table string, ids []uuid.UUID) ([]N
 				*noder = node
 			}
 		}
-
 	case todo.Table:
 		nodes, err := c.Todo.Query().
 			Where(todo.IDIn(ids...)).
