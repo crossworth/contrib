@@ -39,10 +39,6 @@ import (
 	"github.com/graphql-go/graphql/language/visitor"
 )
 
-func init() {
-	gen.AllFeatures = append(gen.AllFeatures, FeatureGraphQLGlobalID)
-}
-
 type (
 	// Extension implements the entc.Extension for providing GraphQL integration.
 	Extension struct {
