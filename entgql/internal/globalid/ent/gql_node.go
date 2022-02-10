@@ -26,6 +26,7 @@ import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/contrib/entgql/internal/globalid/ent/post"
 	"entgo.io/contrib/entgql/internal/globalid/ent/user"
+	"entgo.io/contrib/entgql/internal/globalid/ent/video"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/sync/semaphore"
@@ -33,8 +34,9 @@ import (
 
 // typesToTable map the GlobalID types to the table names.
 var typesToTable = map[string]string{
-	typePost: post.Table,
-	typeUser: user.Table,
+	typePost:  post.Table,
+	typeUser:  user.Table,
+	typeVideo: video.Table,
 }
 
 // Noder wraps the basic Node method.
@@ -130,6 +132,33 @@ func (u *User) Node(ctx context.Context) (node *Node, err error) {
 	return node, nil
 }
 
+func (v *Video) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     v.GlobalID(ctx),
+		Type:   "Video",
+		Fields: make([]*Field, 2),
+		Edges:  make([]*Edge, 0),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(v.Name); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "string",
+		Name:  "name",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(v.PostID); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "uuid.UUID",
+		Name:  "post_id",
+		Value: string(buf),
+	}
+	return node, nil
+}
+
 func (c *Client) Node(ctx context.Context, id GlobalID) (*Node, error) {
 	n, err := c.Noder(ctx, id)
 	if err != nil {
@@ -202,6 +231,15 @@ func (c *Client) noder(ctx context.Context, table string, id GlobalID) (Noder, e
 		n, err := c.User.Query().
 			Where(user.ID(id.Int())).
 			CollectFields(ctx, "User").
+			Only(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return n, nil
+	case video.Table:
+		n, err := c.Video.Query().
+			Where(video.ID(id.UUID())).
+			CollectFields(ctx, "Video").
 			Only(ctx)
 		if err != nil {
 			return nil, err
@@ -293,6 +331,19 @@ func (c *Client) noders(ctx context.Context, table string, ids []GlobalID) ([]No
 		nodes, err := c.User.Query().
 			Where(user.IDIn(GlobalIDsToInts(ids)...)).
 			CollectFields(ctx, "User").
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.GlobalID(ctx)] {
+				*noder = node
+			}
+		}
+	case video.Table:
+		nodes, err := c.Video.Query().
+			Where(video.IDIn(GlobalIDsToUUIDs(ids)...)).
+			CollectFields(ctx, "Video").
 			All(ctx)
 		if err != nil {
 			return nil, err

@@ -19,6 +19,7 @@ package ent
 import (
 	"entgo.io/contrib/entgql/internal/globalid/ent/post"
 	"entgo.io/contrib/entgql/internal/globalid/ent/schema"
+	"entgo.io/contrib/entgql/internal/globalid/ent/video"
 	"github.com/google/uuid"
 )
 
@@ -32,4 +33,10 @@ func init() {
 	postDescID := postFields[0].Descriptor()
 	// post.DefaultID holds the default value on creation for the id field.
 	post.DefaultID = postDescID.Default.(func() uuid.UUID)
+	videoFields := schema.Video{}.Fields()
+	_ = videoFields
+	// videoDescID is the schema descriptor for id field.
+	videoDescID := videoFields[0].Descriptor()
+	// video.DefaultID holds the default value on creation for the id field.
+	video.DefaultID = videoDescID.Default.(func() uuid.UUID)
 }

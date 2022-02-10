@@ -22,6 +22,7 @@ import (
 	"entgo.io/contrib/entgql/internal/globalid/ent/post"
 	"entgo.io/contrib/entgql/internal/globalid/ent/predicate"
 	"entgo.io/contrib/entgql/internal/globalid/ent/user"
+	"entgo.io/contrib/entgql/internal/globalid/ent/video"
 )
 
 // PostWhereInput represents a where input for filtering Post queries.
@@ -421,5 +422,220 @@ func (i *UserWhereInput) P() (predicate.User, error) {
 		return predicates[0], nil
 	default:
 		return user.And(predicates...), nil
+	}
+}
+
+// VideoWhereInput represents a where input for filtering Video queries.
+type VideoWhereInput struct {
+	Not *VideoWhereInput   `json:"not,omitempty"`
+	Or  []*VideoWhereInput `json:"or,omitempty"`
+	And []*VideoWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *GlobalID  `json:"id,omitempty"`
+	IDNEQ   *GlobalID  `json:"idNEQ,omitempty"`
+	IDIn    []GlobalID `json:"idIn,omitempty"`
+	IDNotIn []GlobalID `json:"idNotIn,omitempty"`
+	IDGT    *GlobalID  `json:"idGT,omitempty"`
+	IDGTE   *GlobalID  `json:"idGTE,omitempty"`
+	IDLT    *GlobalID  `json:"idLT,omitempty"`
+	IDLTE   *GlobalID  `json:"idLTE,omitempty"`
+
+	// "name" field predicates.
+	Name             *string  `json:"name,omitempty"`
+	NameNEQ          *string  `json:"nameNEQ,omitempty"`
+	NameIn           []string `json:"nameIn,omitempty"`
+	NameNotIn        []string `json:"nameNotIn,omitempty"`
+	NameGT           *string  `json:"nameGT,omitempty"`
+	NameGTE          *string  `json:"nameGTE,omitempty"`
+	NameLT           *string  `json:"nameLT,omitempty"`
+	NameLTE          *string  `json:"nameLTE,omitempty"`
+	NameContains     *string  `json:"nameContains,omitempty"`
+	NameHasPrefix    *string  `json:"nameHasPrefix,omitempty"`
+	NameHasSuffix    *string  `json:"nameHasSuffix,omitempty"`
+	NameEqualFold    *string  `json:"nameEqualFold,omitempty"`
+	NameContainsFold *string  `json:"nameContainsFold,omitempty"`
+
+	// "post_id" field predicates.
+	PostID      *GlobalID  `json:"postID,omitempty"`
+	PostIDNEQ   *GlobalID  `json:"postIDNEQ,omitempty"`
+	PostIDIn    []GlobalID `json:"postIDIn,omitempty"`
+	PostIDNotIn []GlobalID `json:"postIDNotIn,omitempty"`
+	PostIDGT    *GlobalID  `json:"postIDGT,omitempty"`
+	PostIDGTE   *GlobalID  `json:"postIDGTE,omitempty"`
+	PostIDLT    *GlobalID  `json:"postIDLT,omitempty"`
+	PostIDLTE   *GlobalID  `json:"postIDLTE,omitempty"`
+}
+
+// Filter applies the VideoWhereInput filter on the VideoQuery builder.
+func (i *VideoWhereInput) Filter(q *VideoQuery) (*VideoQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// P returns a predicate for filtering videos.
+// An error is returned if the input is empty or invalid.
+func (i *VideoWhereInput) P() (predicate.Video, error) {
+	var predicates []predicate.Video
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, err
+		}
+		predicates = append(predicates, video.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, err
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.Video, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, err
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, video.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, err
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.Video, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, err
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, video.And(and...))
+	}
+
+	if i.ID != nil {
+		predicates = append(predicates, video.IDEQ(i.ID.UUID()))
+	}
+
+	if i.IDNEQ != nil {
+		predicates = append(predicates, video.IDNEQ(i.IDNEQ.UUID()))
+	}
+
+	if i.IDIn != nil {
+		predicates = append(predicates, video.IDIn(GlobalIDsToUUIDs(i.IDIn)...))
+	}
+
+	if i.IDNotIn != nil {
+		predicates = append(predicates, video.IDNotIn(GlobalIDsToUUIDs(i.IDNotIn)...))
+	}
+
+	if i.IDGT != nil {
+		predicates = append(predicates, video.IDGT(i.IDGT.UUID()))
+	}
+
+	if i.IDGTE != nil {
+		predicates = append(predicates, video.IDGTE(i.IDGTE.UUID()))
+	}
+
+	if i.IDLT != nil {
+		predicates = append(predicates, video.IDLT(i.IDLT.UUID()))
+	}
+
+	if i.IDLTE != nil {
+		predicates = append(predicates, video.IDLTE(i.IDLTE.UUID()))
+	}
+	if i.Name != nil {
+		predicates = append(predicates, video.NameEQ(*i.Name))
+	}
+	if i.NameNEQ != nil {
+		predicates = append(predicates, video.NameNEQ(*i.NameNEQ))
+	}
+	if len(i.NameIn) > 0 {
+		predicates = append(predicates, video.NameIn(i.NameIn...))
+	}
+	if len(i.NameNotIn) > 0 {
+		predicates = append(predicates, video.NameNotIn(i.NameNotIn...))
+	}
+	if i.NameGT != nil {
+		predicates = append(predicates, video.NameGT(*i.NameGT))
+	}
+	if i.NameGTE != nil {
+		predicates = append(predicates, video.NameGTE(*i.NameGTE))
+	}
+	if i.NameLT != nil {
+		predicates = append(predicates, video.NameLT(*i.NameLT))
+	}
+	if i.NameLTE != nil {
+		predicates = append(predicates, video.NameLTE(*i.NameLTE))
+	}
+	if i.NameContains != nil {
+		predicates = append(predicates, video.NameContains(*i.NameContains))
+	}
+	if i.NameHasPrefix != nil {
+		predicates = append(predicates, video.NameHasPrefix(*i.NameHasPrefix))
+	}
+	if i.NameHasSuffix != nil {
+		predicates = append(predicates, video.NameHasSuffix(*i.NameHasSuffix))
+	}
+	if i.NameEqualFold != nil {
+		predicates = append(predicates, video.NameEqualFold(*i.NameEqualFold))
+	}
+	if i.NameContainsFold != nil {
+		predicates = append(predicates, video.NameContainsFold(*i.NameContainsFold))
+	}
+
+	if i.PostID != nil {
+		predicates = append(predicates, video.PostIDEQ(i.PostID.UUID()))
+	}
+
+	if i.PostIDNEQ != nil {
+		predicates = append(predicates, video.PostIDNEQ(i.PostIDNEQ.UUID()))
+	}
+
+	if i.PostIDIn != nil {
+		predicates = append(predicates, video.PostIDIn(GlobalIDsToUUIDs(i.PostIDIn)...))
+	}
+
+	if i.PostIDNotIn != nil {
+		predicates = append(predicates, video.PostIDNotIn(GlobalIDsToUUIDs(i.PostIDNotIn)...))
+	}
+
+	if i.PostIDGT != nil {
+		predicates = append(predicates, video.PostIDGT(i.PostIDGT.UUID()))
+	}
+
+	if i.PostIDGTE != nil {
+		predicates = append(predicates, video.PostIDGTE(i.PostIDGTE.UUID()))
+	}
+
+	if i.PostIDLT != nil {
+		predicates = append(predicates, video.PostIDLT(i.PostIDLT.UUID()))
+	}
+
+	if i.PostIDLTE != nil {
+		predicates = append(predicates, video.PostIDLTE(i.PostIDLTE.UUID()))
+	}
+
+	switch len(predicates) {
+	case 0:
+		return nil, fmt.Errorf("empty predicate VideoWhereInput")
+	case 1:
+		return predicates[0], nil
+	default:
+		return video.And(predicates...), nil
 	}
 }

@@ -53,10 +53,23 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
+	// VideosColumns holds the columns for the "videos" table.
+	VideosColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString},
+		{Name: "post_id", Type: field.TypeUUID},
+	}
+	// VideosTable holds the schema information for the "videos" table.
+	VideosTable = &schema.Table{
+		Name:       "videos",
+		Columns:    VideosColumns,
+		PrimaryKey: []*schema.Column{VideosColumns[0]},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		PostsTable,
 		UsersTable,
+		VideosTable,
 	}
 )
 

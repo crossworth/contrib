@@ -27,6 +27,7 @@ import (
 
 	"entgo.io/contrib/entgql/internal/globalid/ent/post"
 	"entgo.io/contrib/entgql/internal/globalid/ent/user"
+	"entgo.io/contrib/entgql/internal/globalid/ent/video"
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/errcode"
@@ -698,5 +699,232 @@ func (u *User) ToEdge(order *UserOrder) *UserEdge {
 	return &UserEdge{
 		Node:   u,
 		Cursor: order.Field.toCursor(u),
+	}
+}
+
+// VideoEdge is the edge representation of Video.
+type VideoEdge struct {
+	Node   *Video `json:"node"`
+	Cursor Cursor `json:"cursor"`
+}
+
+// VideoConnection is the connection containing edges to Video.
+type VideoConnection struct {
+	Edges      []*VideoEdge `json:"edges"`
+	PageInfo   PageInfo     `json:"pageInfo"`
+	TotalCount int          `json:"totalCount"`
+}
+
+// VideoPaginateOption enables pagination customization.
+type VideoPaginateOption func(*videoPager) error
+
+// WithVideoOrder configures pagination ordering.
+func WithVideoOrder(order *VideoOrder) VideoPaginateOption {
+	if order == nil {
+		order = DefaultVideoOrder
+	}
+	o := *order
+	return func(pager *videoPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultVideoOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithVideoFilter configures pagination filter.
+func WithVideoFilter(filter func(*VideoQuery) (*VideoQuery, error)) VideoPaginateOption {
+	return func(pager *videoPager) error {
+		if filter == nil {
+			return errors.New("VideoQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type videoPager struct {
+	order  *VideoOrder
+	filter func(*VideoQuery) (*VideoQuery, error)
+}
+
+func newVideoPager(opts []VideoPaginateOption) (*videoPager, error) {
+	pager := &videoPager{}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultVideoOrder
+	}
+	return pager, nil
+}
+
+func (p *videoPager) applyFilter(query *VideoQuery) (*VideoQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *videoPager) toCursor(v *Video) Cursor {
+	return p.order.Field.toCursor(v)
+}
+
+func (p *videoPager) applyCursors(query *VideoQuery, after, before *Cursor) *VideoQuery {
+	for _, predicate := range cursorsToPredicates(
+		p.order.Direction, after, before,
+		p.order.Field.field, DefaultVideoOrder.Field.field,
+	) {
+		query = query.Where(predicate)
+	}
+	return query
+}
+
+func (p *videoPager) applyOrder(query *VideoQuery, reverse bool) *VideoQuery {
+	direction := p.order.Direction
+	if reverse {
+		direction = direction.reverse()
+	}
+	query = query.Order(direction.orderFunc(p.order.Field.field))
+	if p.order.Field != DefaultVideoOrder.Field {
+		query = query.Order(direction.orderFunc(DefaultVideoOrder.Field.field))
+	}
+	return query
+}
+
+// Paginate executes the query and returns a relay based cursor connection to Video.
+func (v *VideoQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...VideoPaginateOption,
+) (*VideoConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newVideoPager(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	if v, err = pager.applyFilter(v); err != nil {
+		return nil, err
+	}
+
+	conn := &VideoConnection{Edges: []*VideoEdge{}}
+	if !hasCollectedField(ctx, edgesField) || first != nil && *first == 0 || last != nil && *last == 0 {
+		if hasCollectedField(ctx, totalCountField) ||
+			hasCollectedField(ctx, pageInfoField) {
+			count, err := v.Count(ctx)
+			if err != nil {
+				return nil, err
+			}
+			conn.TotalCount = count
+			conn.PageInfo.HasNextPage = first != nil && count > 0
+			conn.PageInfo.HasPreviousPage = last != nil && count > 0
+		}
+		return conn, nil
+	}
+
+	if (after != nil || first != nil || before != nil || last != nil) && hasCollectedField(ctx, totalCountField) {
+		count, err := v.Clone().Count(ctx)
+		if err != nil {
+			return nil, err
+		}
+		conn.TotalCount = count
+	}
+
+	v = pager.applyCursors(v, after, before)
+	v = pager.applyOrder(v, last != nil)
+	var limit int
+	if first != nil {
+		limit = *first + 1
+	} else if last != nil {
+		limit = *last + 1
+	}
+	if limit > 0 {
+		v = v.Limit(limit)
+	}
+
+	if field := getCollectedField(ctx, edgesField, nodeField); field != nil {
+		v = v.collectField(graphql.GetOperationContext(ctx), *field)
+	}
+
+	nodes, err := v.All(ctx)
+	if err != nil || len(nodes) == 0 {
+		return conn, err
+	}
+
+	if len(nodes) == limit {
+		conn.PageInfo.HasNextPage = first != nil
+		conn.PageInfo.HasPreviousPage = last != nil
+		nodes = nodes[:len(nodes)-1]
+	}
+
+	var nodeAt func(int) *Video
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *Video {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *Video {
+			return nodes[i]
+		}
+	}
+
+	conn.Edges = make([]*VideoEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		conn.Edges[i] = &VideoEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+
+	conn.PageInfo.StartCursor = &conn.Edges[0].Cursor
+	conn.PageInfo.EndCursor = &conn.Edges[len(conn.Edges)-1].Cursor
+	if conn.TotalCount == 0 {
+		conn.TotalCount = len(nodes)
+	}
+
+	return conn, nil
+}
+
+// VideoOrderField defines the ordering field of Video.
+type VideoOrderField struct {
+	field    string
+	toCursor func(*Video) Cursor
+}
+
+// VideoOrder defines the ordering of Video.
+type VideoOrder struct {
+	Direction OrderDirection   `json:"direction"`
+	Field     *VideoOrderField `json:"field"`
+}
+
+// DefaultVideoOrder is the default ordering of Video.
+var DefaultVideoOrder = &VideoOrder{
+	Direction: OrderDirectionAsc,
+	Field: &VideoOrderField{
+		field: video.FieldID,
+		toCursor: func(v *Video) Cursor {
+			return Cursor{ID: fmt.Sprint(v.ID)}
+		},
+	},
+}
+
+// ToEdge converts Video into VideoEdge.
+func (v *Video) ToEdge(order *VideoOrder) *VideoEdge {
+	if order == nil {
+		order = DefaultVideoOrder
+	}
+	return &VideoEdge{
+		Node:   v,
+		Cursor: order.Field.toCursor(v),
 	}
 }

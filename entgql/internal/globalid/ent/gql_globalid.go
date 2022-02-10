@@ -27,14 +27,16 @@ import (
 	"entgo.io/contrib/entgql"
 	"entgo.io/contrib/entgql/internal/globalid/ent/post"
 	"entgo.io/contrib/entgql/internal/globalid/ent/user"
+	"entgo.io/contrib/entgql/internal/globalid/ent/video"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 )
 
 const (
-	typePost = "post"
-	typeUser = "user"
+	typePost  = "post"
+	typeUser  = "user"
+	typeVideo = "video"
 )
 
 // GlobalID is a global unique identifier that contains a a type and id.
@@ -82,6 +84,14 @@ func (g *GlobalID) UnmarshalGQL(v interface{}) error {
 	case typeUser:
 		rt, err := strconv.Atoi(g.ID)
 		if err != nil {
+			return err
+		}
+		g.resolvedType = rt
+		return nil
+
+	case typeVideo:
+		var rt uuid.UUID
+		if err := rt.UnmarshalText([]byte(g.ID)); err != nil {
 			return err
 		}
 		g.resolvedType = rt
@@ -159,6 +169,16 @@ func NewUserGlobalID(id int) GlobalID {
 	return GlobalID{Type: typeUser, ID: fmt.Sprintf("%d", id), resolvedType: id}
 }
 
+// GlobalID returns the global identifier for the given Video node.
+func (v *Video) GlobalID(ctx context.Context) GlobalID {
+	return GlobalID{Type: typeVideo, ID: fmt.Sprintf("%s", v.ID), resolvedType: v.ID}
+}
+
+// NewVideoGlobalID creates a global identifier for the given Video node.
+func NewVideoGlobalID(id uuid.UUID) GlobalID {
+	return GlobalID{Type: typeVideo, ID: fmt.Sprintf("%s", id), resolvedType: id}
+}
+
 // GlobalIDPtr returns a *GlobalID from the provided GlobalID.
 func GlobalIDPtr(g GlobalID) *GlobalID {
 	return &g
@@ -186,6 +206,16 @@ func (c *Client) FromGlobalID(ctx context.Context, r GlobalID) (_ Noder, err err
 		n, err := c.User.Query().
 			Where(user.ID(id)).
 			CollectFields(ctx, "User").
+			Only(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return n, nil
+	case typeVideo:
+		id := r.UUID()
+		n, err := c.Video.Query().
+			Where(video.ID(id)).
+			CollectFields(ctx, "Video").
 			Only(ctx)
 		if err != nil {
 			return nil, err
@@ -291,6 +321,28 @@ func (c *Client) nodes(ctx context.Context, typ string, rs []*GlobalID) ([]Noder
 		nodes, err := c.User.Query().
 			Where(user.IDIn(ids...)).
 			CollectFields(ctx, "User").
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case typeVideo:
+		ids := make([]uuid.UUID, len(rs))
+		for i := range ids {
+			id := rs[i].UUID()
+			ids[i] = id
+		}
+		idmap := make(map[uuid.UUID][]*Noder, len(ids))
+		for i, id := range ids {
+			idmap[id] = append(idmap[id], &noders[i])
+		}
+		nodes, err := c.Video.Query().
+			Where(video.IDIn(ids...)).
+			CollectFields(ctx, "Video").
 			All(ctx)
 		if err != nil {
 			return nil, err

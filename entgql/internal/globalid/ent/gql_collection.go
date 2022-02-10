@@ -61,3 +61,15 @@ func (u *UserQuery) collectField(ctx *graphql.OperationContext, field graphql.Co
 	}
 	return u
 }
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (v *VideoQuery) CollectFields(ctx context.Context, satisfies ...string) *VideoQuery {
+	if fc := graphql.GetFieldContext(ctx); fc != nil {
+		v = v.collectField(graphql.GetOperationContext(ctx), fc.Field, satisfies...)
+	}
+	return v
+}
+
+func (v *VideoQuery) collectField(ctx *graphql.OperationContext, field graphql.CollectedField, satisfies ...string) *VideoQuery {
+	return v
+}
