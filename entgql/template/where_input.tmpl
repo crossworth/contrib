@@ -10,7 +10,7 @@ in the LICENSE file in the root directory of this source tree.
 
     {{ $usingGlobalID := false }}
 
-    {{ range $n := (slice $.Nodes 1) }}
+    {{ range $n := $.Nodes }}
         {{ if $n.ID.Annotations.EntGQL.GlobalID }}
             {{ $usingGlobalID = true }}
         {{ else }}
