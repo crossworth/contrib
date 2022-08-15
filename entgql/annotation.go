@@ -17,6 +17,7 @@ package entgql
 import (
 	"encoding/json"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/entc/gen"
 	"entgo.io/ent/schema"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -377,6 +378,13 @@ func Mutations(inputs ...MutationOption) Annotation {
 		a = append(a, MutationConfig{IsCreate: f.IsCreate()})
 	}
 	return Annotation{MutationInputs: a}
+}
+
+type CustomOrderByOrderDir = func(column string) string
+type CustomOrderByFunc = func(orderDir CustomOrderByOrderDir) func(*sql.Selector)
+
+func CustomOrderBy(in map[string]CustomOrderByFunc) Annotation {
+	return Annotation{}
 }
 
 // Merge implements the schema.Merger interface.

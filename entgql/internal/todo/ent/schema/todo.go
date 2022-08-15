@@ -18,7 +18,10 @@ import (
 	"time"
 
 	"entgo.io/contrib/entgql"
+	"entgo.io/contrib/entgql/internal/todo/ent/category"
+	"entgo.io/contrib/entgql/internal/todo/ent/todo"
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -71,10 +74,10 @@ func (Todo) Fields() []ent.Field {
 func (Todo) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("children", Todo.Type).
-			//nolint SA1019 we keep this as the example.
+			// nolint SA1019 we keep this as the example.
 			Annotations(entgql.Bind(), entgql.RelayConnection()).
 			From("parent").
-			//nolint SA1019 we keep this as the example.
+			// nolint SA1019 we keep this as the example.
 			Annotations(entgql.Bind()).
 			Unique(),
 		edge.From("category", Category.Type).
@@ -92,5 +95,14 @@ func (Todo) Annotations() []schema.Annotation {
 		entgql.RelayConnection(),
 		entgql.QueryField(),
 		entgql.Mutations(entgql.MutationCreate()),
+		entgql.CustomOrderBy(map[string]entgql.CustomOrderByFunc{
+			"CATEGORY_TEXT": func(orderDir entgql.CustomOrderByOrderDir) func(selector *sql.Selector) {
+				return func(selector *sql.Selector) {
+					ctbl := sql.Table(category.Table)
+					selector.Join(ctbl).On(selector.C(todo.FieldCategoryID), ctbl.C(category.FieldID))
+					selector.OrderBy(orderDir(ctbl.C(category.FieldText)))
+				}
+			},
+		}),
 	}
 }

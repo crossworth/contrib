@@ -822,6 +822,42 @@ func (s *todoTestSuite) TestFilteringWithCustomPredicate() {
 	})
 }
 
+func (s *todoTestSuite) TestOrderByWithCustomSelector() {
+	ctx := context.Background()
+
+	ctA := s.ent.Category.Create().SetText("A").SetStatus(category.StatusEnabled).SaveX(ctx)
+	ctB := s.ent.Category.Create().SetText("B").SetStatus(category.StatusEnabled).SaveX(ctx)
+
+	td1 := s.ent.Todo.Create().
+		SetStatus(todo.StatusCompleted).
+		SetText("OrdTest1").
+		SetCategory(ctA).
+		SaveX(ctx)
+	td2 := s.ent.Todo.Create().
+		SetStatus(todo.StatusCompleted).
+		SetText("OrdTest2").
+		SetCategory(ctB).
+		SaveX(ctx)
+
+	s.Run("order by CATEGORY_TEXT", func() {
+		var rsp response
+		err := s.Post(`query {
+  todos(where: {textHasPrefix: "OrdTest"}, orderBy: {direction: DESC, field: CATEGORY_TEXT}) {
+    edges {
+      node {
+        id
+      }
+    }
+  }
+}`, &rsp,
+		)
+		s.NoError(err)
+		s.Len(rsp.Todos.Edges, 2)
+		s.Equal(td2.ID, rsp.Todos.Edges[0].Node.ID)
+		s.Equal(td1.ID, rsp.Todos.Edges[1].Node.ID)
+	})
+}
+
 func (s *todoTestSuite) TestNode() {
 	const (
 		query = `query($id: ID!) {
