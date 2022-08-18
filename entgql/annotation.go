@@ -50,6 +50,8 @@ type (
 		QueryField *FieldConfig `json:"QueryField,omitempty"`
 		// MutationInputs defines the input types for the mutation.
 		MutationInputs []MutationConfig `json:"MutationInputs,omitempty"`
+		// OrderByMapping is the mapping of custom OrderBy.
+		OrderByMapping map[string]func(*sql.Selector) string
 	}
 
 	// Directive to apply on the field/type.
@@ -380,11 +382,14 @@ func Mutations(inputs ...MutationOption) Annotation {
 	return Annotation{MutationInputs: a}
 }
 
-type CustomOrderByOrderDir = func(column string) string
-type CustomOrderByFunc = func(orderDir CustomOrderByOrderDir) func(*sql.Selector)
+func OrderByMapping(in map[string]func(*sql.Selector) string) Annotation {
+	return Annotation{
+		OrderByMapping: in,
+	}
+}
 
-func CustomOrderBy(in map[string]CustomOrderByFunc) Annotation {
-	return Annotation{}
+func (a Annotation) OrderBy() map[string]func(*sql.Selector) string {
+	return a.OrderByMapping
 }
 
 // Merge implements the schema.Merger interface.

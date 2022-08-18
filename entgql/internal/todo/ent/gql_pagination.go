@@ -28,6 +28,7 @@ import (
 	"entgo.io/contrib/entgql/internal/todo/ent/category"
 	"entgo.io/contrib/entgql/internal/todo/ent/friendship"
 	"entgo.io/contrib/entgql/internal/todo/ent/group"
+	entSchema "entgo.io/contrib/entgql/internal/todo/ent/schema"
 	"entgo.io/contrib/entgql/internal/todo/ent/todo"
 	"entgo.io/contrib/entgql/internal/todo/ent/user"
 	"entgo.io/ent/dialect/sql"
@@ -257,6 +258,62 @@ func paginateLimit(first, last *int) int {
 		limit = *last + 1
 	}
 	return limit
+}
+
+var (
+	categoryOrderMapping   = map[string]func(*sql.Selector) string{}
+	friendshipOrderMapping = map[string]func(*sql.Selector) string{}
+	groupOrderMapping      = map[string]func(*sql.Selector) string{}
+	todoOrderMapping       = map[string]func(*sql.Selector) string{}
+	userOrderMapping       = map[string]func(*sql.Selector) string{}
+)
+
+func init() {
+	for _, a := range new(entSchema.Category).Annotations() {
+		if ob, ok := a.(interface {
+			OrderBy() map[string]func(*sql.Selector) string
+		}); ok {
+			for k, v := range ob.OrderBy() {
+				categoryOrderMapping[k] = v
+			}
+		}
+	}
+	for _, a := range new(entSchema.Friendship).Annotations() {
+		if ob, ok := a.(interface {
+			OrderBy() map[string]func(*sql.Selector) string
+		}); ok {
+			for k, v := range ob.OrderBy() {
+				friendshipOrderMapping[k] = v
+			}
+		}
+	}
+	for _, a := range new(entSchema.Group).Annotations() {
+		if ob, ok := a.(interface {
+			OrderBy() map[string]func(*sql.Selector) string
+		}); ok {
+			for k, v := range ob.OrderBy() {
+				groupOrderMapping[k] = v
+			}
+		}
+	}
+	for _, a := range new(entSchema.Todo).Annotations() {
+		if ob, ok := a.(interface {
+			OrderBy() map[string]func(*sql.Selector) string
+		}); ok {
+			for k, v := range ob.OrderBy() {
+				todoOrderMapping[k] = v
+			}
+		}
+	}
+	for _, a := range new(entSchema.User).Annotations() {
+		if ob, ok := a.(interface {
+			OrderBy() map[string]func(*sql.Selector) string
+		}); ok {
+			for k, v := range ob.OrderBy() {
+				userOrderMapping[k] = v
+			}
+		}
+	}
 }
 
 // CategoryEdge is the edge representation of Category.

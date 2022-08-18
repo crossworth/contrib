@@ -95,13 +95,11 @@ func (Todo) Annotations() []schema.Annotation {
 		entgql.RelayConnection(),
 		entgql.QueryField(),
 		entgql.Mutations(entgql.MutationCreate()),
-		entgql.CustomOrderBy(map[string]entgql.CustomOrderByFunc{
-			"CATEGORY_TEXT": func(orderDir entgql.CustomOrderByOrderDir) func(selector *sql.Selector) {
-				return func(selector *sql.Selector) {
-					ctbl := sql.Table(category.Table)
-					selector.Join(ctbl).On(selector.C(todo.FieldCategoryID), ctbl.C(category.FieldID))
-					selector.OrderBy(orderDir(ctbl.C(category.FieldText)))
-				}
+		entgql.OrderByMapping(map[string]func(*sql.Selector) string{
+			"CATEGORY_TEXT": func(selector *sql.Selector) string {
+				ctbl := sql.Table(category.Table)
+				selector.Join(ctbl).On(selector.C(todo.FieldCategoryID), ctbl.C(category.FieldID))
+				return ctbl.C(category.FieldText)
 			},
 		}),
 	}
