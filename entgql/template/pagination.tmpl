@@ -428,23 +428,6 @@ func ({{ $r }} *{{ $query }}) Paginate(
 
 {{ $orderField := $names.OrderField -}}
 {{- if $orderFields }}
-	var (
-		{{- range $f := $orderFields }}
-			{{- $var := print $orderField $f.StructField }}
-			// {{ $var }} orders {{ $name }} by {{ $f.Name }}.
-			{{ $var }} = &{{ $orderField }}{
-				field: {{ $node.Package }}.{{ $f.Constant }},
-				toCursor: func({{ $r }} *{{ $name }}) Cursor {
-					{{- $marshalID := and $idType.Mixed (gqlMarshaler $node.ID) }}
-					return Cursor{
-						ID: {{ $r }}.{{ if $marshalID }}marshalID(){{ else }}ID{{ end }},
-						Value: {{ $r }}.{{ $f.StructField }},
-					}
-				},
-			}
-		{{- end }}
-	)
-
 	// String implement fmt.Stringer interface.
 	func (f {{ $orderField }}) String() string {
 		var str string
@@ -471,7 +454,19 @@ func ({{ $r }} *{{ $query }}) Paginate(
 		switch str {
 			{{- range $f := $orderFields }}
 				case "{{ $f.Annotations.EntGQL.OrderField }}":
-					*f = *{{ print $orderField $f.StructField }}
+					*f = {{ $orderField }}{
+						field: {{ $node.Package }}.{{ $f.Constant }},
+					    order: func(s *sql.Selector) string{
+							return s.C({{ $node.Package }}.{{ $f.Constant }})
+						},
+						toCursor: func({{ $r }} *{{ $name }}) Cursor {
+							{{- $marshalID := and $idType.Mixed (gqlMarshaler $node.ID) }}
+							return Cursor{
+									ID: {{ $r }}.{{ if $marshalID }}marshalID(){{ else }}ID{{ end }},
+									Value: {{ $r }}.{{ $f.StructField }},
+							}
+						},
+				}
 			{{- end }}
 		default:
 			return fmt.Errorf("%s is not a valid {{ $orderField }}", str)
@@ -483,6 +478,7 @@ func ({{ $r }} *{{ $query }}) Paginate(
 // {{ $orderField }} defines the ordering field of {{ $node.Name }}.
 type {{ $orderField }} struct {
 	field string
+	order func(*sql.Selector) string
 	toCursor func(*{{ $name }}) Cursor
 }
 
@@ -497,6 +493,9 @@ var {{ $defaultOrder }} = &{{ $order }}{
 	Direction: OrderDirectionAsc,
 	Field: &{{ $orderField }}{
 		field: {{ $node.Package }}.{{ $node.ID.Constant }},
+		order: func(s *sql.Selector) string{
+			return s.C({{ $node.Package }}.{{ $node.ID.Constant }})
+		},
 		toCursor: func({{ $r }} *{{ $name }}) Cursor {
 			{{- $marshalID := and $idType.Mixed (gqlMarshaler $node.ID) }}
 			return Cursor{ID: {{ $r }}.{{ if $marshalID }}marshalID(){{ else }}ID{{ end }}}

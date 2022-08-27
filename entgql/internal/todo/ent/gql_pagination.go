@@ -513,29 +513,6 @@ func (c *CategoryQuery) Paginate(
 	return conn, nil
 }
 
-var (
-	// CategoryOrderFieldText orders Category by text.
-	CategoryOrderFieldText = &CategoryOrderField{
-		field: category.FieldText,
-		toCursor: func(c *Category) Cursor {
-			return Cursor{
-				ID:    c.ID,
-				Value: c.Text,
-			}
-		},
-	}
-	// CategoryOrderFieldDuration orders Category by duration.
-	CategoryOrderFieldDuration = &CategoryOrderField{
-		field: category.FieldDuration,
-		toCursor: func(c *Category) Cursor {
-			return Cursor{
-				ID:    c.ID,
-				Value: c.Duration,
-			}
-		},
-	}
-)
-
 // String implement fmt.Stringer interface.
 func (f CategoryOrderField) String() string {
 	var str string
@@ -561,9 +538,31 @@ func (f *CategoryOrderField) UnmarshalGQL(v interface{}) error {
 	}
 	switch str {
 	case "TEXT":
-		*f = *CategoryOrderFieldText
+		*f = CategoryOrderField{
+			field: category.FieldText,
+			order: func(s *sql.Selector) string {
+				return s.C(category.FieldText)
+			},
+			toCursor: func(c *Category) Cursor {
+				return Cursor{
+					ID:    c.ID,
+					Value: c.Text,
+				}
+			},
+		}
 	case "DURATION":
-		*f = *CategoryOrderFieldDuration
+		*f = CategoryOrderField{
+			field: category.FieldDuration,
+			order: func(s *sql.Selector) string {
+				return s.C(category.FieldDuration)
+			},
+			toCursor: func(c *Category) Cursor {
+				return Cursor{
+					ID:    c.ID,
+					Value: c.Duration,
+				}
+			},
+		}
 	default:
 		return fmt.Errorf("%s is not a valid CategoryOrderField", str)
 	}
@@ -573,6 +572,7 @@ func (f *CategoryOrderField) UnmarshalGQL(v interface{}) error {
 // CategoryOrderField defines the ordering field of Category.
 type CategoryOrderField struct {
 	field    string
+	order    func(*sql.Selector) string
 	toCursor func(*Category) Cursor
 }
 
@@ -587,6 +587,9 @@ var DefaultCategoryOrder = &CategoryOrder{
 	Direction: OrderDirectionAsc,
 	Field: &CategoryOrderField{
 		field: category.FieldID,
+		order: func(s *sql.Selector) string {
+			return s.C(category.FieldID)
+		},
 		toCursor: func(c *Category) Cursor {
 			return Cursor{ID: c.ID}
 		},
@@ -804,6 +807,7 @@ func (f *FriendshipQuery) Paginate(
 // FriendshipOrderField defines the ordering field of Friendship.
 type FriendshipOrderField struct {
 	field    string
+	order    func(*sql.Selector) string
 	toCursor func(*Friendship) Cursor
 }
 
@@ -818,6 +822,9 @@ var DefaultFriendshipOrder = &FriendshipOrder{
 	Direction: OrderDirectionAsc,
 	Field: &FriendshipOrderField{
 		field: friendship.FieldID,
+		order: func(s *sql.Selector) string {
+			return s.C(friendship.FieldID)
+		},
 		toCursor: func(f *Friendship) Cursor {
 			return Cursor{ID: f.ID}
 		},
@@ -1035,6 +1042,7 @@ func (gr *GroupQuery) Paginate(
 // GroupOrderField defines the ordering field of Group.
 type GroupOrderField struct {
 	field    string
+	order    func(*sql.Selector) string
 	toCursor func(*Group) Cursor
 }
 
@@ -1049,6 +1057,9 @@ var DefaultGroupOrder = &GroupOrder{
 	Direction: OrderDirectionAsc,
 	Field: &GroupOrderField{
 		field: group.FieldID,
+		order: func(s *sql.Selector) string {
+			return s.C(group.FieldID)
+		},
 		toCursor: func(gr *Group) Cursor {
 			return Cursor{ID: gr.ID}
 		},
@@ -1263,49 +1274,6 @@ func (t *TodoQuery) Paginate(
 	return conn, nil
 }
 
-var (
-	// TodoOrderFieldCreatedAt orders Todo by created_at.
-	TodoOrderFieldCreatedAt = &TodoOrderField{
-		field: todo.FieldCreatedAt,
-		toCursor: func(t *Todo) Cursor {
-			return Cursor{
-				ID:    t.ID,
-				Value: t.CreatedAt,
-			}
-		},
-	}
-	// TodoOrderFieldStatus orders Todo by status.
-	TodoOrderFieldStatus = &TodoOrderField{
-		field: todo.FieldStatus,
-		toCursor: func(t *Todo) Cursor {
-			return Cursor{
-				ID:    t.ID,
-				Value: t.Status,
-			}
-		},
-	}
-	// TodoOrderFieldPriority orders Todo by priority.
-	TodoOrderFieldPriority = &TodoOrderField{
-		field: todo.FieldPriority,
-		toCursor: func(t *Todo) Cursor {
-			return Cursor{
-				ID:    t.ID,
-				Value: t.Priority,
-			}
-		},
-	}
-	// TodoOrderFieldText orders Todo by text.
-	TodoOrderFieldText = &TodoOrderField{
-		field: todo.FieldText,
-		toCursor: func(t *Todo) Cursor {
-			return Cursor{
-				ID:    t.ID,
-				Value: t.Text,
-			}
-		},
-	}
-)
-
 // String implement fmt.Stringer interface.
 func (f TodoOrderField) String() string {
 	var str string
@@ -1335,13 +1303,57 @@ func (f *TodoOrderField) UnmarshalGQL(v interface{}) error {
 	}
 	switch str {
 	case "CREATED_AT":
-		*f = *TodoOrderFieldCreatedAt
+		*f = TodoOrderField{
+			field: todo.FieldCreatedAt,
+			order: func(s *sql.Selector) string {
+				return s.C(todo.FieldCreatedAt)
+			},
+			toCursor: func(t *Todo) Cursor {
+				return Cursor{
+					ID:    t.ID,
+					Value: t.CreatedAt,
+				}
+			},
+		}
 	case "STATUS":
-		*f = *TodoOrderFieldStatus
+		*f = TodoOrderField{
+			field: todo.FieldStatus,
+			order: func(s *sql.Selector) string {
+				return s.C(todo.FieldStatus)
+			},
+			toCursor: func(t *Todo) Cursor {
+				return Cursor{
+					ID:    t.ID,
+					Value: t.Status,
+				}
+			},
+		}
 	case "PRIORITY":
-		*f = *TodoOrderFieldPriority
+		*f = TodoOrderField{
+			field: todo.FieldPriority,
+			order: func(s *sql.Selector) string {
+				return s.C(todo.FieldPriority)
+			},
+			toCursor: func(t *Todo) Cursor {
+				return Cursor{
+					ID:    t.ID,
+					Value: t.Priority,
+				}
+			},
+		}
 	case "TEXT":
-		*f = *TodoOrderFieldText
+		*f = TodoOrderField{
+			field: todo.FieldText,
+			order: func(s *sql.Selector) string {
+				return s.C(todo.FieldText)
+			},
+			toCursor: func(t *Todo) Cursor {
+				return Cursor{
+					ID:    t.ID,
+					Value: t.Text,
+				}
+			},
+		}
 	default:
 		return fmt.Errorf("%s is not a valid TodoOrderField", str)
 	}
@@ -1351,6 +1363,7 @@ func (f *TodoOrderField) UnmarshalGQL(v interface{}) error {
 // TodoOrderField defines the ordering field of Todo.
 type TodoOrderField struct {
 	field    string
+	order    func(*sql.Selector) string
 	toCursor func(*Todo) Cursor
 }
 
@@ -1365,6 +1378,9 @@ var DefaultTodoOrder = &TodoOrder{
 	Direction: OrderDirectionAsc,
 	Field: &TodoOrderField{
 		field: todo.FieldID,
+		order: func(s *sql.Selector) string {
+			return s.C(todo.FieldID)
+		},
 		toCursor: func(t *Todo) Cursor {
 			return Cursor{ID: t.ID}
 		},
@@ -1582,6 +1598,7 @@ func (u *UserQuery) Paginate(
 // UserOrderField defines the ordering field of User.
 type UserOrderField struct {
 	field    string
+	order    func(*sql.Selector) string
 	toCursor func(*User) Cursor
 }
 
@@ -1596,6 +1613,9 @@ var DefaultUserOrder = &UserOrder{
 	Direction: OrderDirectionAsc,
 	Field: &UserOrderField{
 		field: user.FieldID,
+		order: func(s *sql.Selector) string {
+			return s.C(user.FieldID)
+		},
 		toCursor: func(u *User) Cursor {
 			return Cursor{ID: u.ID}
 		},
